@@ -1,10 +1,9 @@
-from dreamcenter.game import start_game
-
-def main():
-    launch()
+from dreamcenter.game import DreamGame
 
 def launch():
-    start_game()
+    game = DreamGame.create()
+    game.loop()
+
 
 if __name__ == "__main__":
-    main()
+    launch()
