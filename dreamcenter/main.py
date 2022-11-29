@@ -1,9 +1,15 @@
-from dreamcenter.game import DreamGame
+from dreamcenter.game import start_game
+import click
 
+@click.group()
+def main():
+    """
+    Entrypoint for game
+    """
+
+@main.command(help="launches game")
 def launch():
-    game = DreamGame.create()
-    game.loop()
-
+    start_game()
 
 if __name__ == "__main__":
-    launch()
+    main()

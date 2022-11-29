@@ -3,7 +3,7 @@ import enum
 from dreamcenter.loader import import_image, import_sound, import_level
 from dataclasses import dataclass
 from dataclasses import field
-from constants import (
+from dreamcenter.constants import (
     DESIRED_FPS,
     SCREENRECT,
     SPRITES,
@@ -46,8 +46,8 @@ class DreamGame:
     fullscreen: bool
     state: GameState
     channels: dict
-    game_menu: GameLoop = field(init=False, default=None)
-    game_edit: GameEditing = field(init=False, default=None)
+    game_menu: "GameLoop" = field(init=False, default=None)
+    game_edit: "GameLoop" = field(init=False, default=None)
 
     @classmethod
     def create(cls, fullscreen=False):
@@ -98,7 +98,7 @@ class DreamGame:
         pg.init()
         window_style = pg.FULLSCREEN if self.fullscreen else 0
         bit_depth = pg.display.mode_ok(self.screen_rect.size, window_style, 32)
-        screen = pg.display.set_mode(self.screen_rect.size, window_style, bit_depth)
+        self.screen = pg.display.set_mode(self.screen_rect.size, window_style, bit_depth)
         for sprite_index, sprite_name in SPRITES.items():
             img = import_image(sprite_name)
             for flipped_x in (True, False):
@@ -117,7 +117,6 @@ class DreamGame:
         pg.font.init()
         self.game_menu = GameMenu(game=self)
         self.set_state(GameState.initialized)
-        return screen
 
 
 @dataclass
@@ -137,7 +136,9 @@ class GameLoop:
             self.handle_events()
 
     def handle_event(self, event):
-        # handles singular events
+        """
+        Handles a singular event, `event`.
+        """
 
     # Shortcut
     def set_state(self, new_state):
@@ -154,8 +155,9 @@ class GameLoop:
 
 class GameMenu(GameLoop):
     def loop(self):
+        print("Main menu loop")
         clock = pg.time.Clock()
-        self.screen.blit(IMAGE_SPRITES[(False, False, "backdrop")], (0,0))
+        self.screen.blit(IMAGE_SPRITES[(False, False, "background")], (0,0))
         while self.state == GameState.main_menu:
             self.handle_events()
             pg.display.flip()
@@ -164,3 +166,7 @@ class GameMenu(GameLoop):
 
 class GameEditing(GameLoop):
     pass
+
+def start_game():
+    game = DreamGame.create()
+    game.start_game()

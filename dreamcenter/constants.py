@@ -3,7 +3,7 @@ from typing import Dict, Tuple
 
 DESIRED_FPS = 60
 
-SCREENRECT = (0, 0, 1280, 720)
+SCREENRECT = pg.Rect(0, 0, 1280, 720)
 
 SPRITES = {
     "edwardo": "edwardo.png",
