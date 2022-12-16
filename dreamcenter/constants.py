@@ -14,7 +14,11 @@ TILES_X = 32
 FONT_NAME = None
 FONT_SIZE = 20
 
+PLAYER_MOVE_SPEED = 3
+
 SCREENRECT = pg.Rect(0, 0, TILE_WIDTH * TILES_X, TILE_HEIGHT * TILES_Y)
+
+MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT = 1, 2, 3
 
 SPRITES = {
     "edwardo": "edwardo.png",
@@ -22,6 +26,10 @@ SPRITES = {
     "background": "background.png",
     "logo": "logo.png",
     "edit_background": "edit_background.png",
+    "play_background": "play_background.png",
+    "blank": "blank.png",
+    "bricks1": "bricks1.png",
+    "bloody_floor": "bloody_floor.png",
 }
 
 # Holds the converted and imported sprite images. The key is a tuple
@@ -30,8 +38,13 @@ IMAGE_SPRITES: Dict[Tuple[bool, bool, str], pg.Surface] = {}
 
 ALLOWED_BG = [
     "bricks1",
-
+    "bloody_floor",
+    "blank",
 ]
 
 SOUNDS = {}
+
+KEY_BACKGROUND = 1
+KEY_SHRUB = 2
+KEY_ENEMY = 3
 

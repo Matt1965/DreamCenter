@@ -1,7 +1,9 @@
 import enum
 import pygame as pg
 from pygame import Vector2 as Vector
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Generator, Optional, Dict
+from itertools import cycle, repeat
 from dreamcenter.constants import (
     IMAGE_SPRITES,
     TILE_HEIGHT,
@@ -9,6 +11,7 @@ from dreamcenter.constants import (
     FONT_NAME,
     FONT_SIZE,
     SOUNDS,
+    ALLOWED_BG,
 )
 
 
@@ -44,10 +47,13 @@ class Layer(enum.IntEnum):
     background = 0
     enemy = 20
     shrub = 25
+    player = 27
     projectile = 30
 
 
 class Sprite(pg.sprite.Sprite):
+    _layer = Layer.background
+
     @classmethod
     def create_from_tile(
         cls,
@@ -118,7 +124,7 @@ class Sprite(pg.sprite.Sprite):
         rect=None,
         image=None,
         channel=None,
-        sound=None,
+        sounds=None,
         orientation=0,
         position=(0,0),
         flipped_x=False,
@@ -129,7 +135,7 @@ class Sprite(pg.sprite.Sprite):
         super().__init__(groups)
         self.image = image
         self.channel = channel
-        self.sound = sound
+        self.sounds = sounds
         self.image_tiles = image_tiles
         self.index = index
         self.rect = rect
@@ -147,7 +153,7 @@ class Sprite(pg.sprite.Sprite):
             self.move(position)
 
     def set_sprite_index(self, index):
-        self.image = self.image_sprites[(self.flipped_x, self.flipped_y, index)]
+        self.image = self.image_tiles[(self.flipped_x, self.flipped_y, index)]
         self.surface = self.image.copy()
         self.rect = self.image.get_rect(center=self.rect.center)
         self.mask = pg.mask.from_surface(self.image)
@@ -189,8 +195,8 @@ class Sprite(pg.sprite.Sprite):
             self.animation_state = AnimationState.stopped
 
     def play(self):
-        if self.sound is not None and pg.mixer and self.channel is not None:
-            effect_name = next(self.sound)
+        if self.sounds is not None and pg.mixer and self.channel is not None:
+            effect_name = next(self.sounds)
             if effect_name is not None:
                 effect = SOUNDS[effect_name]
                 # Do not attempt to play if the channel is busy.
@@ -319,6 +325,47 @@ class Enemy(DirectedSprite):
             self.state = SpriteState.stopped
 
 
+class Player(Sprite):
+
+    _layer = Layer.player
+
+    def __init__(
+        self,
+        cooldown=30,
+        cooldown_remaining=0,
+        position=[800, 500],
+        state=SpriteState.unknown,
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+        self.state = state
+        self.cooldown = cooldown
+        self.position = position
+        self.cooldown_remaining = cooldown_remaining
+
+    def update(self):
+        if self.cooldown_remaining > 0:
+            self.cooldown_remaining -= 1
+
+        try:
+            self.animate()
+        except StopIteration:
+            self.state = SpriteState.stopped
+        self.move(self.position)
+        self.play()
+
+
+    def shoot(self):
+        """
+        Returns True if player is capable of firing.
+        """
+        if self.cooldown_remaining == 0:
+            self.cooldown_remaining = self.cooldown
+            self.play()
+            return True
+        return False
+
+
 class Background(Sprite):
     _layer = Layer.background
 
@@ -335,27 +382,28 @@ class Shrub(Sprite):
 class SpriteManager:
 
     layers: pg.sprite.LayeredUpdates
-    selected: pg.sprite.LayeredUpdates
-    level: list
     sprites: pg.sprite.LayeredUpdates
-
-    def create(cls, layers, level):
-        return cls(layers=layers, level=level, selected=pg.sprite.LayeredUpdates())
-
-    def empty(self):
-        self.sprites.empty()
+    indices: Optional[Generator[int, None, None]]
+    _last_index: Optional[int] = field(init=False, default=None)
+    _last_orientation: int = field(init=False, default=0)
 
     def create_background(self, position, orientation=None, index=None):
+        if index is None:
+            index = self._last_index
+        if orientation is None:
+            orientation = self._last_orientation
+        self.indices = cycle(ALLOWED_BG)
         background = Background.create_from_tile(
             sounds=None,
             groups=[self.layers],
-            index=index,
-            orientatio=orientation
+            index=next(self.indices) if index is None else index,
+            orientation=orientation,
+            position=position,
         )
         return background
 
     def create_debris(self, position, orientation=None, index=None):
-        debris = Debris.create_from_sprite(
+        debris = Shrub.create_from_sprite(
             sounds=None,
             groups=[self.layers],
             index=index,
@@ -363,10 +411,48 @@ class SpriteManager:
         )
         return debris
 
+    def create_player(self, position, orientation=None, index=None):
+        player = Player.create_from_sprite(
+            index="edwardo",
+            groups=[self.layers],
+            state=SpriteState.moving,
+        )
+        player.move(position)
+        return player
+
     def select_sprites(self, sprites, position=None):
-        self.selected.add(sprites)
+        self.sprites.add(sprites)
         if position is not None:
             self.move(position)
+
+
+    def generate_rotation(self):
+        """
+        Repeats the sprite's default orientation forever.
+
+        This is typically done only for sprites with a fixed
+        orientation that never changes.
+        """
+        return repeat(self.orientation)
+
+    def set_orientation(self, orientation):
+        """
+        Updates the orientation to `orientation`.
+        """
+        self.orientation = orientation
+        self.angle = self.generate_rotation()
+        self.rotate(next(self.angle))
+
+    def increment_orientation(self, relative_orientation):
+        """
+        Increments each sprite's relative orientation by `relative_orientation`.
+        """
+        for sprite in self.sprites:
+            rot = sprite.orientation
+            rot += relative_orientation
+            rot %= 360
+            sprite.set_orientation(rot)
+            self._last_orientation = rot
 
     def move(self, position):
         x, y = position
@@ -382,3 +468,84 @@ class SpriteManager:
             sprite.move(position)
             if clear_after:
                 self.sprites.remove(sprite)
+
+    def reset(self):
+        """
+        Resets the last index and orientation.
+        """
+        self._last_index = None
+        self._last_orientation = 0
+
+    def create_shrub(self, position, orientation=None, index=None):
+        """
+        Factory that creates a shrub sprite at a given `position`,
+        with optional `index` and `orientation`.
+        """
+        shrub = Shrub.create_from_sprite(
+            sounds=None,
+            groups=[self.layers],
+            index=index,
+            orientation=orientation,
+        )
+        return shrub
+
+    @property
+    def selected(self):
+        return bool(self.sprites)
+
+    def cycle_index(self):
+        """
+        Cycles the index of sprites to the next one in the
+        generator and updates the sprite index of all sprites
+        accordingly.
+
+        Note this only works with background and shrub sprites.
+        """
+        if self.indices is None:
+            return
+        new_index = next(self.indices)
+        for sprite in self.sprites:
+            if sprite.layer in (Layer.background, Layer.shrub):
+                sprite.set_sprite_index(new_index)
+        self._last_index = new_index
+
+    def update(self):
+        """
+        Pass-through to the internal sprite group's update method.
+        """
+        return self.sprites.update()
+
+    def clear(self, dest, background):
+        """
+        Pass-through to the internal sprite group's clear method.
+        """
+        return self.sprites.clear(dest, background)
+
+    def draw(self, surface):
+        """
+        Pass-through to the internal sprite group's draw method.
+        """
+        return self.sprites.draw(surface)
+
+    def empty(self):
+        """
+        Pass-through to the sprite group's empty method.
+        """
+        self.sprites.empty()
+
+    def kill(self):
+        """
+        Kills all sprites in the internal sprites group.
+        """
+        for sprite in self.sprites:
+            sprite.kill()
+
+def create_animation_roll(frames: Dict[AnimationState, Generator[int, None, None]]):
+    """
+    Takes a dictionary of animation states (as keys) and frame
+    generators (as values) and fills out the missing ones with `None`.
+    """
+    for state in AnimationState:
+        if state not in frames:
+            frames[state] = None
+    return frames

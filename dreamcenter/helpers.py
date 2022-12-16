@@ -34,9 +34,4 @@ def tile_position(position):
     return x // TILE_WIDTH, y // TILE_HEIGHT
 
 
-def create_tile_map(default_value=None) -> list:
-    """
-    Creates a grid tile map with default value of None
-    """
-    return [[default_value for _ in range(TILES_X)] for _ in range(TILES_Y)]
 
