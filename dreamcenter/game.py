@@ -21,6 +21,7 @@ from dreamcenter.constants import (
     KEY_BACKGROUND,
     KEY_SHRUB,
     KEY_ENEMY,
+    MOVEMENT_BLOCKED,
 )
 from dreamcenter.helpers import (
     create_surface,
@@ -33,6 +34,8 @@ from dreamcenter.sprites import (
     Layer,
     SpriteManager,
     Text,
+    SpriteState,
+    AnimationState,
 )
 
 
@@ -329,7 +332,7 @@ class GameMenu(GameLoop):
         menu_base_position = Vector(self.game.screen_rect.center)
         self.menu_group.render_position = menu_base_position
         self.menu_group.clear()
-        logo = Background.create_from_tile(
+        logo = Background.create_from_sprite(
             groups=[group],
             index="logo",
             orientation=0,
@@ -377,6 +380,7 @@ class PlayerGroup():
     down = False
     left = False
     right = False
+    firing = False
 
     def spawn_player(self):
         self.player = self.sprite_manager.create_player(SCREENRECT.center)
@@ -387,6 +391,15 @@ class PlayerGroup():
             move.scale_to_length(PLAYER_MOVE_SPEED)
             self.player.position[0] += move[0]
             self.player.position[1] += move[1]
+
+    def fire_projectile(self):
+        if self.player.cooldown_remaining == 0 and self.firing == True:
+            self.sprite_manager.create_projectile(self.player.position, pg.mouse.get_pos())
+            self.player.cooldown_remaining = self.player.cooldown
+
+    def update(self):
+        self.move_player()
+        self.fire_projectile()
 
 
 
@@ -588,7 +601,10 @@ class GamePlaying(GameLoop):
         self.background.blit(IMAGE_SPRITES[(False, False, "play_background")], (0, 0))
         for (y, x, dx, dy) in tile_positions():
             background_tile = self.level[y][x]
-            self.background.blit(background_tile.image, (dx, dy))
+            self.sprite_manager.create_background(
+                position=(dx, dy),
+                index=background_tile.index,
+            )
 
     def try_open_level(self):
         """
@@ -600,7 +616,7 @@ class GamePlaying(GameLoop):
             else:
                 self.create_blank_level()
 
-    def open_level(self, file_obj, show_hud: bool = True):
+    def open_level(self, file_obj):
         data = json.loads(file_obj.read())
         self.load_level(
             background=data["background"], shrubs=data["shrubs"]
@@ -624,7 +640,6 @@ class GamePlaying(GameLoop):
                 )
             )
             self.sprite_manager.place(shrub["position"])
-            self.sprite_manager.empty()
 
     def create_blank_level(self):
         """
@@ -639,28 +654,27 @@ class GamePlaying(GameLoop):
 
     def loop(self):
         clock = pg.time.Clock()
-        self.draw_background()
         self.player_group.spawn_player()
 
         while self.state == GameState.game_playing:
             self.handle_events()
             self.handle_collision()
-            self.player_group.move_player()
+            self.player_group.update()
             self.draw()
             pg.display.flip()
             clock.tick(DESIRED_FPS)
         self.layers.empty()
 
     def handle_event(self, event):
-        if event.type == pg.KEYDOWN:
-            if event.key == pg.K_w:
-                self.player_group.up = True
-            if event.key == pg.K_s:
-                self.player_group.down = True
-            if event.key == pg.K_a:
-                self.player_group.left = True
-            if event.key == pg.K_d:
-                self.player_group.right = True
+        keys = pg.key.get_pressed()
+        if keys[pg.K_w]:
+            self.player_group.up = True
+        if keys[pg.K_s]:
+            self.player_group.down = True
+        if keys[pg.K_a]:
+            self.player_group.left = True
+        if keys[pg.K_d]:
+            self.player_group.right = True
         if event.type == pg.KEYUP:
             if event.key == pg.K_w:
                 self.player_group.up = False
@@ -670,22 +684,36 @@ class GamePlaying(GameLoop):
                 self.player_group.left = False
             if event.key == pg.K_d:
                 self.player_group.right = False
+        if event.type == pg.MOUSEBUTTONDOWN and event.button in (MOUSE_LEFT, MOUSE_RIGHT):
+            if event.button == MOUSE_LEFT:
+                self.player_group.firing = True
+        if event.type == pg.MOUSEBUTTONUP and event.button in (MOUSE_LEFT, MOUSE_RIGHT):
+            if event.button == MOUSE_LEFT:
+                self.player_group.firing = False
 
     def handle_collision(self):
         enemies = self.layers.get_sprites_from_layer(Layer.enemy)
         tiles = self.layers.get_sprites_from_layer(Layer.background)
-        projectile = self.layers.get_sprites_from_layer(Layer.projectile)
+        projectiles = self.layers.get_sprites_from_layer(Layer.projectile)
         player = self.layers.get_sprites_from_layer(Layer.player)
-        for player, tiles in collide_mask(player, tiles):
-            if tiles.rect.collidepoint(player.rect.top):
-                self.player_group.up = False
-            if tiles.rect.collidepoint(player.rect.bottom):
-                self.player_group.down = False
-            if tiles.rect.collidepoint(player.rect.right):
-                self.player_group.right = False
-            if tiles.rect.collidepoint(player.rect.left):
-                self.player_group.left = False
+        print(projectiles)
+        for tiles, projectiles in collide_mask(tiles, projectiles):
+            if tiles.index in MOVEMENT_BLOCKED:
+                for projectile in projectiles:
+                    projectile.animation_state = AnimationState.exploding
 
+        tiles = self.layers.get_sprites_from_layer(Layer.background)
+        for player, tiles in collide_mask(player, tiles):
+            for tile in tiles:
+                if tile.index in MOVEMENT_BLOCKED:
+                    if tile.rect.collidepoint(player.rect.midtop):
+                        self.player_group.up = False
+                    if tile.rect.collidepoint(player.rect.midbottom):
+                        self.player_group.down = False
+                    if tile.rect.collidepoint(player.rect.midright):
+                        self.player_group.right = False
+                    if tile.rect.collidepoint(player.rect.midleft):
+                        self.player_group.left = False
 
 
 def start_game():

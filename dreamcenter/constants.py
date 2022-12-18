@@ -1,5 +1,6 @@
 import pygame as pg
 from typing import Dict, Tuple
+from itertools import chain
 
 DESIRED_FPS = 60
 
@@ -30,7 +31,15 @@ SPRITES = {
     "blank": "blank.png",
     "bricks1": "bricks1.png",
     "bloody_floor": "bloody_floor.png",
+    "projectile": "projectile.png",
 }
+
+ANIMATIONS = {
+    "projectile_explode": ["projectile_{:003}".format(frame) for frame in range(1, 3 + 1)],
+}
+
+for animation in chain.from_iterable(ANIMATIONS.values()):
+    SPRITES[animation] = f"{animation}.png"
 
 # Holds the converted and imported sprite images. The key is a tuple
 # of (flipped_x, flipped_y, sprite_name)
@@ -40,6 +49,10 @@ ALLOWED_BG = [
     "bricks1",
     "bloody_floor",
     "blank",
+]
+
+MOVEMENT_BLOCKED = [
+    "bricks1",
 ]
 
 SOUNDS = {}

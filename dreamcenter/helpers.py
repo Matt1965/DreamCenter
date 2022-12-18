@@ -34,4 +34,12 @@ def tile_position(position):
     return x // TILE_WIDTH, y // TILE_HEIGHT
 
 
+def extend(iterable, repeat):
+    """
+    Given an iterable, repeat each element `repeat` times before
+    continuing to the next.
+    """
+    return (elem for elem in iterable for _ in range(repeat))
+
+
 

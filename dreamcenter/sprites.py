@@ -1,9 +1,12 @@
 import enum
 import pygame as pg
+import operator
+import random
 from pygame import Vector2 as Vector
 from dataclasses import dataclass, field
 from typing import Generator, Optional, Dict
-from itertools import cycle, repeat
+from itertools import cycle, repeat, count, accumulate
+from dreamcenter.helpers import extend
 from dreamcenter.constants import (
     IMAGE_SPRITES,
     TILE_HEIGHT,
@@ -12,6 +15,7 @@ from dreamcenter.constants import (
     FONT_SIZE,
     SOUNDS,
     ALLOWED_BG,
+    ANIMATIONS,
 )
 
 
@@ -53,27 +57,6 @@ class Layer(enum.IntEnum):
 
 class Sprite(pg.sprite.Sprite):
     _layer = Layer.background
-
-    @classmethod
-    def create_from_tile(
-        cls,
-        index,
-        groups,
-        image_tiles=IMAGE_SPRITES,
-        flipped_x=False,
-        flipped_y=False,
-        **kwargs,
-    ):
-        image = image_tiles[(flipped_x, flipped_y, index)]
-        rect = image.get_rect()
-        return cls(
-            image=image,
-            image_tiles=image_tiles,
-            index=index,
-            groups=groups,
-            rect=rect,
-            **kwargs,
-        )
 
     @classmethod
     def create_from_surface(
@@ -226,7 +209,7 @@ class DirectedSprite(Sprite):
                 self.state = SpriteState.moving
                 position, angle = next(self.path)
                 self.move(position)
-                self.rotate(angle + next(self.angle))
+                #self.rotate(angle + next(self.angle))
             self.play()
         except StopIteration:
             self.state = SpriteState.stopped
@@ -270,6 +253,32 @@ class Text(DirectedSprite):
         self.image = self.font.render(self.text, True, self.color)
         self.surface = self.image
         self.rect = self.image.get_rect(center=self.rect.center)
+
+
+class Projectile(DirectedSprite):
+    """
+    Background subclass that changes the layer to `Layer.projectile`
+    """
+
+    _layer = Layer.projectile
+
+    def update(self):
+        super().update()
+        if self.state == SpriteState.stopped:
+            self.animation_state = AnimationState.exploding
+
+
+class Projectile(DirectedSprite):
+    """
+    Background subclass that changes the layer to `Layer.projectile`
+    """
+
+    _layer = Layer.projectile
+
+    def update(self):
+        super().update()
+        if self.state == SpriteState.stopped:
+            self.animation_state = AnimationState.exploding
 
 
 class Enemy(DirectedSprite):
@@ -331,7 +340,7 @@ class Player(Sprite):
 
     def __init__(
         self,
-        cooldown=30,
+        cooldown=20,
         cooldown_remaining=0,
         position=[800, 500],
         state=SpriteState.unknown,
@@ -354,7 +363,6 @@ class Player(Sprite):
         self.move(self.position)
         self.play()
 
-
     def shoot(self):
         """
         Returns True if player is capable of firing.
@@ -367,16 +375,19 @@ class Player(Sprite):
 
 
 class Background(Sprite):
+
     _layer = Layer.background
 
     def update(self):
         pass
+
 
 class Shrub(Sprite):
     _layer = Layer.shrub
 
     def update(self):
         pass
+
 
 @dataclass
 class SpriteManager:
@@ -393,7 +404,7 @@ class SpriteManager:
         if orientation is None:
             orientation = self._last_orientation
         self.indices = cycle(ALLOWED_BG)
-        background = Background.create_from_tile(
+        background = Background.create_from_sprite(
             sounds=None,
             groups=[self.layers],
             index=next(self.indices) if index is None else index,
@@ -420,11 +431,55 @@ class SpriteManager:
         player.move(position)
         return player
 
+    def create_shrub(self, position, orientation=None, index=None):
+        """
+        Factory that creates a shrub sprite at a given `position`,
+        with optional `index` and `orientation`.
+        """
+        shrub = Shrub.create_from_sprite(
+            sounds=None,
+            groups=[self.layers],
+            index=index,
+            orientation=orientation,
+        )
+        return shrub
+
+    def create_projectile(self, source, target, speed=5, max_distance=100):
+        """
+        Factory that creates a projectile sprite starting at `source`
+        and moves toward `target` at `speed` before disappearing if it
+        reaches `max_distance`.
+        """
+        v1 = Vector(target)
+        v2 = Vector(source)
+        vh = (v1 - v2).normalize() * speed
+        path = zip(
+            accumulate(repeat(vh, max_distance), func=operator.add, initial=v2),
+            # It's a rock, so let's make it rotate a bit as it flies
+            count(random.randint(0, 180)),
+        )
+        projectile = Projectile.create_from_sprite(
+            position=source,
+            groups=[self.layers],
+            orientation=0,
+            index="projectile",
+            frames=create_animation_roll(
+                {
+                    AnimationState.exploding: extend(
+                        ANIMATIONS["projectile_explode"], 2
+                    ),
+                },
+            ),
+            path=path,
+            sounds=None,
+        )
+        projectile.move(source)
+        return [projectile]
+
     def select_sprites(self, sprites, position=None):
         self.sprites.add(sprites)
         if position is not None:
             self.move(position)
-
 
     def generate_rotation(self):
         """
@@ -476,19 +531,6 @@ class SpriteManager:
         self._last_index = None
         self._last_orientation = 0
 
-    def create_shrub(self, position, orientation=None, index=None):
-        """
-        Factory that creates a shrub sprite at a given `position`,
-        with optional `index` and `orientation`.
-        """
-        shrub = Shrub.create_from_sprite(
-            sounds=None,
-            groups=[self.layers],
-            index=index,
-            orientation=orientation,
-        )
-        return shrub
-
     @property
     def selected(self):
         return bool(self.sprites)
@@ -539,6 +581,7 @@ class SpriteManager:
         """
         for sprite in self.sprites:
             sprite.kill()
+
 
 def create_animation_roll(frames: Dict[AnimationState, Generator[int, None, None]]):
     """
