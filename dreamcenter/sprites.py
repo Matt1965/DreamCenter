@@ -15,6 +15,7 @@ from dreamcenter.constants import (
     FONT_SIZE,
     SOUNDS,
     ALLOWED_BG,
+    ALLOWED_ENEMY,
     ANIMATIONS,
 )
 
@@ -49,10 +50,12 @@ class SpriteState(enum.Enum):
 class Layer(enum.IntEnum):
 
     background = 0
-    enemy = 20
-    shrub = 25
-    player = 27
-    projectile = 30
+    enemy = 40
+    shrub = 50
+    trap = 60
+    player = 70
+    wall = 80
+    projectile = 90
 
 
 class Sprite(pg.sprite.Sprite):
@@ -340,7 +343,7 @@ class Player(Sprite):
 
     def __init__(
         self,
-        cooldown=20,
+        cooldown=50,
         cooldown_remaining=0,
         position=[800, 500],
         state=SpriteState.unknown,
@@ -382,6 +385,20 @@ class Background(Sprite):
         pass
 
 
+class Wall(Sprite):
+    _layer = Layer.wall
+
+    def update(self):
+        pass
+
+
+class Trap(Sprite):
+    _layer = Layer.trap
+
+    def update(self):
+        pass
+
+
 class Shrub(Sprite):
     _layer = Layer.shrub
 
@@ -413,6 +430,16 @@ class SpriteManager:
         )
         return background
 
+    def create_wall(self, position, orientation=None, index=None):
+        wall = Wall.create_from_sprite(
+            sounds=None,
+            groups=[self.layers],
+            index=index,
+            orientation=orientation,
+            position=position,
+        )
+        return wall
+
     def create_debris(self, position, orientation=None, index=None):
         debris = Shrub.create_from_sprite(
             sounds=None,
@@ -430,6 +457,18 @@ class SpriteManager:
         )
         player.move(position)
         return player
+
+    def create_enemy(self, position, orientation=None, index=None):
+        if index is None:
+            index = self._last_index
+        if orientation is None:
+            orientation = self._last_orientation
+        self.indices = cycle(ALLOWED_ENEMY)
+        enemy = Enemy.create_from_sprite(
+            index=index,
+            groups=[self.layers],
+            state=SpriteState.moving,
+        )
 
     def create_shrub(self, position, orientation=None, index=None):
         """

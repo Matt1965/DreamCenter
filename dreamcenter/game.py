@@ -1,4 +1,5 @@
 import pygame as pg
+import time
 from pygame import Vector2 as Vector
 import enum
 import json
@@ -21,7 +22,7 @@ from dreamcenter.constants import (
     KEY_BACKGROUND,
     KEY_SHRUB,
     KEY_ENEMY,
-    MOVEMENT_BLOCKED,
+    WALLS,
 )
 from dreamcenter.helpers import (
     create_surface,
@@ -30,6 +31,8 @@ from dreamcenter.helpers import (
 )
 from dreamcenter.sprites import (
     Background,
+    Wall,
+    Trap,
     Sprite,
     Layer,
     SpriteManager,
@@ -393,7 +396,7 @@ class PlayerGroup():
             self.player.position[1] += move[1]
 
     def fire_projectile(self):
-        if self.player.cooldown_remaining == 0 and self.firing == True:
+        if self.player.cooldown_remaining == 0 and self.firing is True:
             self.sprite_manager.create_projectile(self.player.position, pg.mouse.get_pos())
             self.player.cooldown_remaining = self.player.cooldown
 
@@ -466,33 +469,30 @@ class GameEditing(GameLoop):
         self.layers.empty()
 
     def handle_event(self, event):
+        mouse = pg.mouse.get_pressed()
         if event.type == pg.MOUSEWHEEL:
             if self.sprite_manager.selected:
                 self.sprite_manager.cycle_index()
         if event.type == pg.MOUSEMOTION:
             self.sprite_manager.move(self.mouse_position)
-        if event.type == pg.MOUSEBUTTONDOWN and event.button in (
-                MOUSE_LEFT,
-                MOUSE_RIGHT,
-        ):
-            if self.sprite_manager.selected:
-                if event.button == MOUSE_LEFT:
-                    for sprite in self.sprite_manager.sprites:
-                        if sprite.layer == Layer.background:
-                            gx, gy = tile_position(sprite.rect.topleft)
-                            self.level[gy][gx] = sprite
-                        else:
-                            self.sprite_manager.place(self.mouse_position)
-                    self.sprite_manager.empty()
-                    self.select_sprite(self._last_selected_sprite)
-                elif event.button == MOUSE_RIGHT:
-                    self.sprite_manager.kill()
-            else:
-                if event.button == MOUSE_RIGHT:
-                    found_sprites = self.layers.get_sprites_at(self.mouse_position)
-                    for found_sprite in found_sprites:
-                        if found_sprite.layer != Layer.background:
-                            found_sprite.kill()
+        if self.sprite_manager.selected:
+            if mouse[0]:
+                for sprite in self.sprite_manager.sprites:
+                    if sprite.layer == Layer.background:
+                        gx, gy = tile_position(sprite.rect.topleft)
+                        self.level[gy][gx] = sprite
+                    else:
+                        self.sprite_manager.place(self.mouse_position)
+                self.sprite_manager.empty()
+                self.select_sprite(self._last_selected_sprite)
+            elif mouse[1]:
+                self.sprite_manager.kill()
+        else:
+            if mouse[1]:
+                found_sprites = self.layers.get_sprites_at(self.mouse_position)
+                for found_sprite in found_sprites:
+                    if found_sprite.layer != Layer.background:
+                        found_sprite.kill()
         # Keyboard Events
         if event.type == pg.KEYDOWN:
             if event.key == pg.K_q:
@@ -601,10 +601,17 @@ class GamePlaying(GameLoop):
         self.background.blit(IMAGE_SPRITES[(False, False, "play_background")], (0, 0))
         for (y, x, dx, dy) in tile_positions():
             background_tile = self.level[y][x]
-            self.sprite_manager.create_background(
-                position=(dx, dy),
-                index=background_tile.index,
-            )
+            print(background_tile)
+            if background_tile.index in WALLS:
+                self.sprite_manager.create_wall(
+                    position=(dx, dy),
+                    index=background_tile.index,
+                )
+            else:
+                self.sprite_manager.create_background(
+                    position=(dx, dy),
+                    index=background_tile.index,
+                )
 
     def try_open_level(self):
         """
@@ -657,12 +664,14 @@ class GamePlaying(GameLoop):
         self.player_group.spawn_player()
 
         while self.state == GameState.game_playing:
+            start= time.time()
             self.handle_events()
             self.handle_collision()
             self.player_group.update()
             self.draw()
             pg.display.flip()
             clock.tick(DESIRED_FPS)
+            print('{0} seconds elapsed for all handling.'.format(time.time() - start))
         self.layers.empty()
 
     def handle_event(self, event):
@@ -693,27 +702,26 @@ class GamePlaying(GameLoop):
 
     def handle_collision(self):
         enemies = self.layers.get_sprites_from_layer(Layer.enemy)
-        tiles = self.layers.get_sprites_from_layer(Layer.background)
+        walls = self.layers.get_sprites_from_layer(Layer.wall)
         projectiles = self.layers.get_sprites_from_layer(Layer.projectile)
         player = self.layers.get_sprites_from_layer(Layer.player)
-        print(projectiles)
-        for tiles, projectiles in collide_mask(tiles, projectiles):
-            if tiles.index in MOVEMENT_BLOCKED:
+
+        for walls, projectiles in collide_mask(walls, projectiles):
+            if walls.index in WALLS:
                 for projectile in projectiles:
                     projectile.animation_state = AnimationState.exploding
 
-        tiles = self.layers.get_sprites_from_layer(Layer.background)
-        for player, tiles in collide_mask(player, tiles):
-            for tile in tiles:
-                if tile.index in MOVEMENT_BLOCKED:
-                    if tile.rect.collidepoint(player.rect.midtop):
-                        self.player_group.up = False
-                    if tile.rect.collidepoint(player.rect.midbottom):
-                        self.player_group.down = False
-                    if tile.rect.collidepoint(player.rect.midright):
-                        self.player_group.right = False
-                    if tile.rect.collidepoint(player.rect.midleft):
-                        self.player_group.left = False
+        walls = self.layers.get_sprites_from_layer(Layer.wall)
+        for player, walls in collide_mask(player, walls):
+            for wall in walls:
+                if wall.rect.collidepoint(player.rect.midtop):
+                    self.player_group.up = False
+                if wall.rect.collidepoint(player.rect.midbottom):
+                    self.player_group.down = False
+                if wall.rect.collidepoint(player.rect.midright):
+                    self.player_group.right = False
+                if wall.rect.collidepoint(player.rect.midleft):
+                    self.player_group.left = False
 
 
 def start_game():
