@@ -200,7 +200,7 @@ class DirectedSprite(Sprite):
     Subclass of `Sprite` that understands basic motion and rotation.
     """
 
-    def __init__(self, path, state=SpriteState.unknown, **kwargs):
+    def __init__(self, path=None, state=SpriteState.unknown, **kwargs):
         super().__init__(**kwargs)
         self.state = state
         self.path = path
@@ -265,18 +265,9 @@ class Projectile(DirectedSprite):
 
     _layer = Layer.projectile
 
-    def update(self):
-        super().update()
-        if self.state == SpriteState.stopped:
-            self.animation_state = AnimationState.exploding
-
-
-class Projectile(DirectedSprite):
-    """
-    Background subclass that changes the layer to `Layer.projectile`
-    """
-
-    _layer = Layer.projectile
+    def __init__(self, damage=5, **kwargs):
+        self.damage = damage
+        super().__init__(**kwargs)
 
     def update(self):
         super().update()
@@ -292,49 +283,32 @@ class Enemy(DirectedSprite):
 
     _layer = Layer.enemy
 
-    def __init__(self, health: int = 100, **kwargs):
+    def __init__(
+        self,
+        health: int = 100,
+        cooldown=100,
+        cooldown_remaining=0,
+        aggro_distance=500,
+        path=None,
+        speed=2,
+        **kwargs
+    ):
         # Tracks the offset, if any, if the image is flipped
         self.sprite_offset = Vector(0, 0)
         self.health = health
+        self.cooldown = cooldown
+        self.cooldown_remaining = cooldown_remaining
+        self.aggro_distance = aggro_distance
+        self.path=path
+        self.speed=speed
         super().__init__(**kwargs)
 
     def update(self):
-        try:
-            self.animate()
-            if self.path is None:
-                return
-            if self.animation_state == AnimationState.dying:
-                self.play()
-                return
-            self.state = SpriteState.moving
-            position, _, flipx = next(self.path)
-            # The state of flipx has changed since we were last
-            # invoked; that happens whenever our orientation is
-            # supposed to change.
-            if flipx != self.flipped_x:
-                # Acknowledge flipx is changed and update the internal state.
-                self.flipped_x = flipx
-                # Calculate the centroid of our CURRENT mask,
-                # before we ask `set_sprite_index` to flip our
-                # image.
-                centroid = self.mask.centroid()
-                # Change to our current index (but actually flip
-                # it because we set flipped_x before)
-                self.set_sprite_index(self.index)
-                # Now get the _new_ centroid
-                new_centroid = self.mask.centroid()
-                # The delta between both centroids is the offset
-                # we must apply to our movement to ensure the
-                # flipped image is placed in the exact same
-                # position as before
-                self.sprite_offset = Vector(new_centroid) - Vector(centroid)
-            if flipx:
-                self.move(position - self.sprite_offset)
-            else:
-                self.move(position)
-            self.play()
-        except StopIteration:
-            self.state = SpriteState.stopped
+        super().update()
+        if self.cooldown_remaining > 0:
+            self.cooldown_remaining -= 1
+        if self.health <= 0:
+            self.animation_state = AnimationState.dying
 
 
 class Player(Sprite):
@@ -343,7 +317,9 @@ class Player(Sprite):
 
     def __init__(
         self,
-        cooldown=50,
+        cooldown=100,
+        health=100,
+        damage=5,
         cooldown_remaining=0,
         position=[800, 500],
         state=SpriteState.unknown,
@@ -351,6 +327,8 @@ class Player(Sprite):
     ):
         super().__init__(**kwargs)
         self.state = state
+        self.health = health
+        self.damage = damage
         self.cooldown = cooldown
         self.position = position
         self.cooldown_remaining = cooldown_remaining
@@ -465,10 +443,19 @@ class SpriteManager:
             orientation = self._last_orientation
         self.indices = cycle(ALLOWED_ENEMY)
         enemy = Enemy.create_from_sprite(
-            index=index,
+            index=next(self.indices) if index is None else index,
             groups=[self.layers],
             state=SpriteState.moving,
+            sounds=None,
+            frames=create_animation_roll(
+                {
+                    AnimationState.dying: extend(
+                        ANIMATIONS["skeleton_death"], 2
+                    ),
+                },
+            ),
         )
+        return enemy
 
     def create_shrub(self, position, orientation=None, index=None):
         """
@@ -483,7 +470,7 @@ class SpriteManager:
         )
         return shrub
 
-    def create_projectile(self, source, target, speed=5, max_distance=100):
+    def create_projectile(self, source, target, speed=1, max_distance=900, damage=5):
         """
         Factory that creates a projectile sprite starting at `source`
         and moves toward `target` at `speed` before disappearing if it
@@ -502,6 +489,7 @@ class SpriteManager:
             groups=[self.layers],
             orientation=0,
             index="projectile",
+            damage=damage,
             frames=create_animation_roll(
                 {
                     AnimationState.exploding: extend(

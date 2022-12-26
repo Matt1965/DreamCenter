@@ -38,6 +38,7 @@ SPRITES = {
 ANIMATIONS = {
     "projectile_explode": ["projectile_{:003}".format(frame) for frame in range(1, 3 + 1)],
     "skeleton_walk": ["Skeleton_Walk_{:003}".format(frame) for frame in range(1, 3 + 1)],
+    "skeleton_death": ["Skeleton_Death_{:003}".format(frame) for frame in range(1, 3 + 1)],
 }
 
 for animation in chain.from_iterable(ANIMATIONS.values()):
@@ -63,7 +64,8 @@ WALLS = [
 
 SOUNDS = {}
 
+KEY_ENEMY = 0
 KEY_BACKGROUND = 1
 KEY_SHRUB = 2
-KEY_ENEMY = 3
+
 

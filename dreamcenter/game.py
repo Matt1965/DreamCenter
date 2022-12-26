@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from dreamcenter.loader import import_image, import_sound, import_level
 from dataclasses import dataclass, field
 from typing import Optional, List
+from itertools import repeat
 from dreamcenter.constants import (
     DESIRED_FPS,
     SCREENRECT,
@@ -28,6 +29,7 @@ from dreamcenter.helpers import (
     create_surface,
     tile_position,
     tile_positions,
+    get_line,
 )
 from dreamcenter.sprites import (
     Background,
@@ -375,7 +377,7 @@ class GameMenu(GameLoop):
 
 
 @dataclass
-class PlayerGroup():
+class PlayerGroup:
 
     sprite_manager: SpriteManager
     player = None
@@ -397,12 +399,47 @@ class PlayerGroup():
 
     def fire_projectile(self):
         if self.player.cooldown_remaining == 0 and self.firing is True:
-            self.sprite_manager.create_projectile(self.player.position, pg.mouse.get_pos())
+            self.sprite_manager.create_projectile(self.player.position, pg.mouse.get_pos(), damage=self.player.damage)
             self.player.cooldown_remaining = self.player.cooldown
 
     def update(self):
         self.move_player()
         self.fire_projectile()
+
+
+@dataclass
+class EnemyGroup:
+    sprite_manager: SpriteManager
+    enemies: List = field(default_factory=list)
+    obstacles: List = field(default_factory=list)
+
+    def spawn_enemy(self):
+        pass
+
+    def update(self):
+        pass
+
+    def in_sight(self, target):
+        for enemy in self.enemies:
+            line_of_sight = get_line(enemy.rect.center, target.rect.center)
+            obstacle_list = [obstacle.rect for obstacle in self.obstacles]
+            zone = enemy.rect.inflate(enemy.aggro_distance, enemy.aggro_distance)
+            obstacles_in_sight = zone.collidelistall(obstacle_list)
+            can_see = True
+            for x in range(1, len(line_of_sight), 5):
+                for obs_index in obstacles_in_sight:
+                    if obstacle_list[obs_index].collidepoint(line_of_sight[x]):
+                        can_see = False
+            if can_see:
+                enemy.path = zip(line_of_sight[::enemy.speed], repeat(0))
+
+    def add_enemies(self, enemies):
+        for enemy in enemies:
+            self.enemies.append(enemy)
+
+    def add_obstacles(self, obstacles):
+        for obstacle in obstacles:
+            self.obstacles.append(obstacle)
 
 
 
@@ -431,9 +468,9 @@ class GameEditing(GameLoop):
         )
 
     def create_blank_level(self):
-        self.load_level(create_tile_map({"index": "blank", "orientation": 0}), [])
+        self.load_level(create_tile_map({"index": "blank", "orientation": 0}), [], [])
 
-    def load_level(self, background, shrubs):
+    def load_level(self, background, shrubs, enemies):
         self.layers.empty()
         self.level = create_background_tile_map(background)
         self.draw_background()
@@ -522,7 +559,7 @@ class GameEditing(GameLoop):
     def open_level(self, file_obj, show_hud: bool = True):
         data = json.loads(file_obj.read())
         self.load_level(
-            background=data["background"], shrubs=data["shrubs"]
+            background=data["background"], shrubs=data["shrubs"], enemies=data["enemies"]
         )
 
     def select_sprite(self, index: Optional[int]):
@@ -551,7 +588,10 @@ class GameEditing(GameLoop):
                 self.mouse_position,
             )
         if index == KEY_ENEMY:
-            self.spawn_enemy()
+            self.sprite_manager.select_sprites(
+                self.sprite_manager.create_enemy(position=self.mouse_position),
+                self.mouse_position,
+            )
 
     def try_save_level(self):
         """
@@ -562,6 +602,7 @@ class GameEditing(GameLoop):
                 save_level(
                     self.level,
                     self.layers.get_sprites_from_layer(Layer.shrub.value),
+                    self.layers.get_sprites_from_layer(Layer.enemy.value),
                     save_file,
                 )
 
@@ -574,6 +615,7 @@ class GamePlaying(GameLoop):
     background: pg.Surface
     sprite_manager: SpriteManager
     player_group: PlayerGroup
+    enemy_group: EnemyGroup
 
     @classmethod
     def create(cls, game):
@@ -595,13 +637,19 @@ class GamePlaying(GameLoop):
                     indices=None,
                 ),
             ),
+            enemy_group=EnemyGroup(
+                sprite_manager=SpriteManager(
+                    sprites=pg.sprite.LayeredUpdates(),
+                    layers=layers,
+                    indices=None,
+                ),
+            )
         )
 
     def draw_background(self):
         self.background.blit(IMAGE_SPRITES[(False, False, "play_background")], (0, 0))
         for (y, x, dx, dy) in tile_positions():
             background_tile = self.level[y][x]
-            print(background_tile)
             if background_tile.index in WALLS:
                 self.sprite_manager.create_wall(
                     position=(dx, dy),
@@ -626,10 +674,10 @@ class GamePlaying(GameLoop):
     def open_level(self, file_obj):
         data = json.loads(file_obj.read())
         self.load_level(
-            background=data["background"], shrubs=data["shrubs"]
+            background=data["background"], shrubs=data["shrubs"], enemies=data["enemies"]
         )
 
-    def load_level(self, background, shrubs):
+    def load_level(self, background, shrubs, enemies):
         """
         Given a valid tile map of `background` tiles, and a list
         of `shrubs`, load them into the game and reset the game.
@@ -638,7 +686,6 @@ class GamePlaying(GameLoop):
         self.level = create_background_tile_map(background)
         self.draw_background()
         for shrub in shrubs:
-            # Use the create/select features of the sprite manager to place the shrubs.
             self.sprite_manager.select_sprites(
                 self.sprite_manager.create_shrub(
                     position=shrub["position"],
@@ -647,6 +694,15 @@ class GamePlaying(GameLoop):
                 )
             )
             self.sprite_manager.place(shrub["position"])
+        for enemy in enemies:
+            self.sprite_manager.select_sprites(
+                self.sprite_manager.create_enemy(
+                    position=enemy["position"],
+                    orientation=enemy["orientation"],
+                    index=enemy["index"],
+                )
+            )
+            self.sprite_manager.place(enemy["position"])
 
     def create_blank_level(self):
         """
@@ -661,17 +717,22 @@ class GamePlaying(GameLoop):
 
     def loop(self):
         clock = pg.time.Clock()
+        loop_counter = 0
         self.player_group.spawn_player()
+        self.enemy_group.add_enemies(self.layers.get_sprites_from_layer(Layer.enemy))
+        self.enemy_group.add_obstacles(self.layers.get_sprites_from_layer(Layer.wall))
 
         while self.state == GameState.game_playing:
-            start= time.time()
             self.handle_events()
             self.handle_collision()
+            if loop_counter % 10 == 0:
+                self.enemy_group.in_sight(self.player_group.player)
             self.player_group.update()
+            self.enemy_group.update()
             self.draw()
             pg.display.flip()
             clock.tick(DESIRED_FPS)
-            print('{0} seconds elapsed for all handling.'.format(time.time() - start))
+            loop_counter += 1
         self.layers.empty()
 
     def handle_event(self, event):
@@ -701,16 +762,14 @@ class GamePlaying(GameLoop):
                 self.player_group.firing = False
 
     def handle_collision(self):
-        enemies = self.layers.get_sprites_from_layer(Layer.enemy)
+
         walls = self.layers.get_sprites_from_layer(Layer.wall)
         projectiles = self.layers.get_sprites_from_layer(Layer.projectile)
-        player = self.layers.get_sprites_from_layer(Layer.player)
-
         for walls, projectiles in collide_mask(walls, projectiles):
-            if walls.index in WALLS:
-                for projectile in projectiles:
-                    projectile.animation_state = AnimationState.exploding
+            for projectile in projectiles:
+                projectile.animation_state = AnimationState.exploding
 
+        player = self.layers.get_sprites_from_layer(Layer.player)
         walls = self.layers.get_sprites_from_layer(Layer.wall)
         for player, walls in collide_mask(player, walls):
             for wall in walls:
@@ -722,6 +781,15 @@ class GamePlaying(GameLoop):
                     self.player_group.right = False
                 if wall.rect.collidepoint(player.rect.midleft):
                     self.player_group.left = False
+
+        projectiles = self.layers.get_sprites_from_layer(Layer.projectile)
+        enemies = self.layers.get_sprites_from_layer(Layer.enemy)
+        for enemies, projectiles in collide_mask(enemies, projectiles):
+            for projectile in projectiles:
+                for enemy in [enemies]:
+                    if pg.sprite.collide_mask(projectile, enemy):
+                        enemy.health -= projectile.damage
+                        projectile.animation_state = AnimationState.exploding
 
 
 def start_game():
@@ -767,14 +835,14 @@ def create_background_tile_map(raw_tile_map):
     return background_tiles
 
 
-def save_level(tile_map, shrubs, file_obj):
+def save_level(tile_map, shrubs, enemies, file_obj):
     """
     Saves `tile_map` and `shrubs` to file_obj. No other sprite types (turrets, etc.) are saved.
     """
     output_map = create_tile_map()
     # This is the default format for the file. If you change it, you
     # must ensure the loader is suitably updated also.
-    data = {"background": None, "shrub": None, "waves": None}
+    data = {"background": None, "shrub": None, "enemies": None}
     for (y, x, _, _) in tile_positions():
         bg_tile = tile_map[y][x]
         assert isinstance(
@@ -783,6 +851,7 @@ def save_level(tile_map, shrubs, file_obj):
         output_map[y][x] = {"index": bg_tile.index, "orientation": bg_tile.orientation}
     data["background"] = output_map
     output_shrubs = []
+    output_enemies = []
     for shrub in shrubs:
         output_shrubs.append(
             {
@@ -792,6 +861,15 @@ def save_level(tile_map, shrubs, file_obj):
             }
         )
     data["shrubs"] = output_shrubs
+    for enemy in enemies:
+        output_enemies.append(
+            {
+                "index": enemy.index,
+                "position": enemy.rect.center,
+                "orientation": enemy.orientation,
+            }
+        )
+    data["enemies"] = output_enemies
     file_obj.write(json.dumps(data))
 
 
