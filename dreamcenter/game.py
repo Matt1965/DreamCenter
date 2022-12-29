@@ -25,6 +25,7 @@ from dreamcenter.constants import (
     KEY_SHRUB,
     KEY_ENEMY,
     WALLS,
+    TILE_WIDTH,
 )
 from dreamcenter.helpers import (
     create_surface,
@@ -423,6 +424,8 @@ class EnemyGroup:
         for enemy in self.enemies:
             if self.in_sight(enemy, self.player):
                 enemy.direct_movement(self.player)
+                if enemy.animation_state is not AnimationState.walking:
+                    enemy.animation_state = AnimationState.walking
 
     def in_sight(self, enemy, target):
         line_of_sight = get_line(enemy.rect.center, target.rect.center)
@@ -454,6 +457,7 @@ class EnemyGroup:
         grid_path = find_path(position, target, grid)
 
         return zip(convert_path(grid_path, speed), repeat(0))
+
 
 
 @dataclass
@@ -746,7 +750,7 @@ class GamePlaying(GameLoop):
         while self.state == GameState.game_playing:
             self.handle_events()
             self.handle_collision()
-            if loop_counter % 20 == 0:
+            if loop_counter % 10 == 0:
                 self.enemy_group.update()
             self.player_group.update()
             self.draw()
@@ -844,6 +848,8 @@ class GamePlaying(GameLoop):
                     enemy.speed
                 )
                 enemy.currently_pathfinding = True
+                enemy.animation_state = AnimationState.walking
+                enemy._final_position = self.player_group.player.rect.center
 
         enemies = self.layers.get_sprites_from_layer(Layer.enemy)
         player = self.layers.get_sprites_from_layer(Layer.player)

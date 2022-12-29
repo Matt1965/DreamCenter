@@ -18,6 +18,7 @@ from dreamcenter.constants import (
     ALLOWED_BG,
     ALLOWED_ENEMY,
     ANIMATIONS,
+    CACHE,
 )
 
 
@@ -117,7 +118,6 @@ class Sprite(pg.sprite.Sprite):
         flipped_x=False,
         flipped_y=False,
         frames=None,
-        mask_left=None,
         animation_state=AnimationState.stopped,
     ):
         super().__init__(groups)
@@ -131,7 +131,9 @@ class Sprite(pg.sprite.Sprite):
         self.flipped_x = flipped_x
         self.flipped_y = flipped_y
         self.frames = frames
+        self.angle = self.generate_rotation()
         self._last_angle = None
+        self._final_position = None
         self.animation_state = animation_state
         if self.image is not None:
             self.mask = pg.mask.from_surface(self.image)
@@ -166,6 +168,9 @@ class Sprite(pg.sprite.Sprite):
         self.rect = new_rect
         self.mask = pg.mask.from_surface(self.image)
         self._last_angle = angle
+
+    def generate_rotation(self):
+        return repeat(self.orientation)
 
     def animate(self):
         if self.frames is None:
@@ -214,7 +219,7 @@ class DirectedSprite(Sprite):
                 self.state = SpriteState.moving
                 position, angle = next(self.path)
                 self.move(position)
-                #self.rotate(angle + next(self.angle))
+                self.rotate(angle + next(self.angle))
             self.play()
         except StopIteration:
             self.state = SpriteState.stopped
@@ -311,22 +316,22 @@ class Enemy(DirectedSprite):
         super().update()
         if self.cooldown_remaining > 0:
             self.cooldown_remaining -= 1
-        if self.path:
-            self.animation_state = AnimationState.walking
-        else:
+        if self.rect.center == self._final_position:
             self.animation_state = AnimationState.stopped
             self.currently_pathfinding = False
         if self.health <= 0:
             self.animation_state = AnimationState.dying
+        self._final_position = self.rect.center
 
     def direct_movement(self, target):
+        self._final_position = target.rect.center
         _v1 = Vector(target.rect.center)
         _v2 = Vector(self.rect.center)
         distance = int(round(math.sqrt((_v1[0]-_v2[0])**2 + (_v1[1]-_v2[1])**2)))
         vh = (_v1 - _v2).normalize() * self.speed
         self.path = zip(
-            accumulate(repeat(vh, distance), func=operator.add, initial=_v2),
-            repeat(0, distance),
+            accumulate(repeat(vh, int(distance/2)), func=operator.add, initial=_v2),
+            repeat(0, int(distance/2)),
         )
 
 
@@ -341,7 +346,7 @@ class Player(Sprite):
         damage=25,
         cooldown_remaining=0,
         position=[800, 500],
-        speed=10,
+        speed=4,
         state=SpriteState.unknown,
         **kwargs
     ):
@@ -357,7 +362,6 @@ class Player(Sprite):
     def update(self):
         if self.cooldown_remaining > 0:
             self.cooldown_remaining -= 1
-
         try:
             self.animate()
         except StopIteration:
@@ -475,6 +479,9 @@ class SpriteManager:
                     ),
                     AnimationState.walking: cycle(extend(
                         ANIMATIONS["skeleton_walk"], 7
+                    )),
+                    AnimationState.stopped: cycle(extend(
+                        ANIMATIONS["skeleton_stopped"], 20
                     )),
                 },
             ),

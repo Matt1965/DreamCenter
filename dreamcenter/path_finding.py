@@ -49,6 +49,6 @@ def convert_path(path, speed):
             return vector_path
         _vh = (_v2 - _v1).normalize() * speed
 
-        vector_path += accumulate(repeat(_vh, int(grid_size - 12.5)), func=operator.add, initial=_v1)
+        vector_path += accumulate(repeat(_vh, int(grid_size/2)), func=operator.add, initial=_v1)
 
     return vector_path
