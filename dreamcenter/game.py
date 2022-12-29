@@ -1,3 +1,4 @@
+import math
 import pygame as pg
 import time
 from pygame import Vector2 as Vector
@@ -10,12 +11,12 @@ from dreamcenter.loader import import_image, import_sound, import_level
 from dataclasses import dataclass, field
 from typing import Optional, List
 from itertools import repeat
+from dreamcenter.path_finding import define_grid, find_path, convert_path
 from dreamcenter.constants import (
     DESIRED_FPS,
     SCREENRECT,
     SPRITES,
     IMAGE_SPRITES,
-    PLAYER_MOVE_SPEED,
     TILES_X,
     TILES_Y,
     MOUSE_RIGHT,
@@ -381,19 +382,19 @@ class PlayerGroup:
 
     sprite_manager: SpriteManager
     player = None
-    up = False
-    down = False
-    left = False
-    right = False
+    collision_directions = {"top": False, "bottom": False, "left": False, "right": False}
     firing = False
 
     def spawn_player(self):
         self.player = self.sprite_manager.create_player(SCREENRECT.center)
 
     def move_player(self):
-        move = pg.math.Vector2(self.right - self.left, self.down - self.up)
+        move = pg.math.Vector2(
+            self.collision_directions["right"] - self.collision_directions["left"],
+            self.collision_directions["bottom"] - self.collision_directions["top"]
+        )
         if move.length_squared() > 0:
-            move.scale_to_length(PLAYER_MOVE_SPEED)
+            move.scale_to_length(self.player.speed)
             self.player.position[0] += move[0]
             self.player.position[1] += move[1]
 
@@ -410,6 +411,8 @@ class PlayerGroup:
 @dataclass
 class EnemyGroup:
     sprite_manager: SpriteManager
+    player: None
+    grid = []
     enemies: List = field(default_factory=list)
     obstacles: List = field(default_factory=list)
 
@@ -417,30 +420,40 @@ class EnemyGroup:
         pass
 
     def update(self):
-        pass
-
-    def in_sight(self, target):
         for enemy in self.enemies:
-            line_of_sight = get_line(enemy.rect.center, target.rect.center)
-            obstacle_list = [obstacle.rect for obstacle in self.obstacles]
-            zone = enemy.rect.inflate(enemy.aggro_distance, enemy.aggro_distance)
-            obstacles_in_sight = zone.collidelistall(obstacle_list)
-            can_see = True
-            for x in range(1, len(line_of_sight), 5):
-                for obs_index in obstacles_in_sight:
-                    if obstacle_list[obs_index].collidepoint(line_of_sight[x]):
-                        can_see = False
-            if can_see:
-                enemy.path = zip(line_of_sight[::enemy.speed], repeat(0))
+            if self.in_sight(enemy, self.player):
+                enemy.direct_movement(self.player)
 
-    def add_enemies(self, enemies):
+    def in_sight(self, enemy, target):
+        line_of_sight = get_line(enemy.rect.center, target.rect.center)
+
+        if Vector(line_of_sight[0]).distance_to(line_of_sight[-1]) > enemy.aggro_distance:
+            return False
+
+        obstacle_list = [obstacle.rect for obstacle in self.obstacles]
+        zone = enemy.rect.inflate(enemy.aggro_distance * 2, enemy.aggro_distance * 2)
+        obstacles_in_sight = zone.collidelistall(obstacle_list)
+
+        for x in range(1, len(line_of_sight), 5):
+            for obs_index in obstacles_in_sight:
+                if obstacle_list[obs_index].collidepoint(line_of_sight[x]):
+                    return False
+
+        return True
+
+    def add_entities(self, enemies, obstacles, player, grid):
         for enemy in enemies:
             self.enemies.append(enemy)
-
-    def add_obstacles(self, obstacles):
         for obstacle in obstacles:
             self.obstacles.append(obstacle)
+        self.player = player
+        self.grid = grid
 
+    @staticmethod
+    def find_pathfinding_path(position, target, grid, speed):
+        grid_path = find_path(position, target, grid)
+
+        return zip(convert_path(grid_path, speed), repeat(0))
 
 
 @dataclass
@@ -616,6 +629,7 @@ class GamePlaying(GameLoop):
     sprite_manager: SpriteManager
     player_group: PlayerGroup
     enemy_group: EnemyGroup
+    pathfinding_grid: []
 
     @classmethod
     def create(cls, game):
@@ -625,6 +639,7 @@ class GamePlaying(GameLoop):
             background=create_surface(),
             layers=layers,
             level=None,
+            pathfinding_grid=None,
             sprite_manager=SpriteManager(
                 sprites=pg.sprite.LayeredUpdates(),
                 layers=layers,
@@ -643,6 +658,7 @@ class GamePlaying(GameLoop):
                     layers=layers,
                     indices=None,
                 ),
+                player=None
             )
         )
 
@@ -719,16 +735,20 @@ class GamePlaying(GameLoop):
         clock = pg.time.Clock()
         loop_counter = 0
         self.player_group.spawn_player()
-        self.enemy_group.add_enemies(self.layers.get_sprites_from_layer(Layer.enemy))
-        self.enemy_group.add_obstacles(self.layers.get_sprites_from_layer(Layer.wall))
+        self.pathfinding_grid = define_grid(self.level)
+        self.enemy_group.add_entities(
+            self.layers.get_sprites_from_layer(Layer.enemy),
+            self.layers.get_sprites_from_layer(Layer.wall),
+            self.player_group.player,
+            self.pathfinding_grid
+        )
 
         while self.state == GameState.game_playing:
             self.handle_events()
             self.handle_collision()
-            if loop_counter % 10 == 0:
-                self.enemy_group.in_sight(self.player_group.player)
+            if loop_counter % 20 == 0:
+                self.enemy_group.update()
             self.player_group.update()
-            self.enemy_group.update()
             self.draw()
             pg.display.flip()
             clock.tick(DESIRED_FPS)
@@ -738,22 +758,22 @@ class GamePlaying(GameLoop):
     def handle_event(self, event):
         keys = pg.key.get_pressed()
         if keys[pg.K_w]:
-            self.player_group.up = True
+            self.player_group.collision_directions["top"] = True
         if keys[pg.K_s]:
-            self.player_group.down = True
+            self.player_group.collision_directions["bottom"] = True
         if keys[pg.K_a]:
-            self.player_group.left = True
+            self.player_group.collision_directions["left"] = True
         if keys[pg.K_d]:
-            self.player_group.right = True
+            self.player_group.collision_directions["right"] = True
         if event.type == pg.KEYUP:
             if event.key == pg.K_w:
-                self.player_group.up = False
+                self.player_group.collision_directions["top"] = False
             if event.key == pg.K_s:
-                self.player_group.down = False
+                self.player_group.collision_directions["bottom"] = False
             if event.key == pg.K_a:
-                self.player_group.left = False
+                self.player_group.collision_directions["left"] = False
             if event.key == pg.K_d:
-                self.player_group.right = False
+                self.player_group.collision_directions["right"] = False
         if event.type == pg.MOUSEBUTTONDOWN and event.button in (MOUSE_LEFT, MOUSE_RIGHT):
             if event.button == MOUSE_LEFT:
                 self.player_group.firing = True
@@ -773,23 +793,63 @@ class GamePlaying(GameLoop):
         walls = self.layers.get_sprites_from_layer(Layer.wall)
         for player, walls in collide_mask(player, walls):
             for wall in walls:
-                if wall.rect.collidepoint(player.rect.midtop):
-                    self.player_group.up = False
-                if wall.rect.collidepoint(player.rect.midbottom):
-                    self.player_group.down = False
-                if wall.rect.collidepoint(player.rect.midright):
-                    self.player_group.right = False
-                if wall.rect.collidepoint(player.rect.midleft):
-                    self.player_group.left = False
+                _top_line = (
+                    (player.rect.topleft[0] + 15, player.rect.topleft[1]),
+                    (player.rect.topright[0] - 15, player.rect.topright[1])
+                    )
+                _bottom_line = (
+                    (player.rect.bottomleft[0] + 15, player.rect.bottomleft[1]),
+                    (player.rect.bottomright[0] - 15, player.rect.bottomright[1])
+                    )
+                _left_line = (
+                    (player.rect.topleft[0], player.rect.topleft[1] + 25),
+                    (player.rect.bottomleft[0], player.rect.bottomleft[1] - 25)
+                    )
+                _right_line = (
+                    (player.rect.topright[0], player.rect.topright[1] + 25),
+                    (player.rect.bottomright[0], player.rect.bottomright[1] - 25)
+                    )
+
+                if wall.rect.clipline(_top_line):
+                    self.player_group.collision_directions["top"] = False
+                if wall.rect.clipline(_bottom_line):
+                    self.player_group.collision_directions["bottom"] = False
+                if wall.rect.clipline(_left_line):
+                    self.player_group.collision_directions["left"] = False
+                if wall.rect.clipline(_right_line):
+                    self.player_group.collision_directions["right"] = False
 
         projectiles = self.layers.get_sprites_from_layer(Layer.projectile)
         enemies = self.layers.get_sprites_from_layer(Layer.enemy)
         for enemies, projectiles in collide_mask(enemies, projectiles):
-            for projectile in projectiles:
-                for enemy in [enemies]:
+            for enemy in [enemies]:
+                for projectile in projectiles:
                     if pg.sprite.collide_mask(projectile, enemy):
-                        enemy.health -= projectile.damage
+                        if projectile.animation_state == AnimationState.stopped:
+                            enemy.health -= projectile.damage
                         projectile.animation_state = AnimationState.exploding
+
+        enemies = self.layers.get_sprites_from_layer(Layer.enemy)
+        walls = self.layers.get_sprites_from_layer(Layer.wall)
+        for enemies, walls in collide_mask(enemies, walls):
+            for enemy in [enemies]:
+                if enemy.path is None:
+                    continue
+                if enemy.currently_pathfinding:
+                    continue
+                enemy.path = self.enemy_group.find_pathfinding_path(
+                    enemy.rect.center,
+                    self.player_group.player.rect.center,
+                    self.pathfinding_grid,
+                    enemy.speed
+                )
+                enemy.currently_pathfinding = True
+
+        enemies = self.layers.get_sprites_from_layer(Layer.enemy)
+        player = self.layers.get_sprites_from_layer(Layer.player)
+        for player, enemies in collide_mask(player, enemies):
+            for enemy in enemies:
+                player.health -= enemy.collision_damage
 
 
 def start_game():

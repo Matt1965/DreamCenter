@@ -41,6 +41,7 @@ def extend(iterable, repeat):
     """
     return (elem for elem in iterable for _ in range(repeat))
 
+
 def get_line(start, end):
     """
     Bresenham's Line Algorithm

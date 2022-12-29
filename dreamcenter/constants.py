@@ -15,8 +15,6 @@ TILES_X = 32
 FONT_NAME = None
 FONT_SIZE = 20
 
-PLAYER_MOVE_SPEED = 3
-
 SCREENRECT = pg.Rect(0, 0, TILE_WIDTH * TILES_X, TILE_HEIGHT * TILES_Y)
 
 MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT = 1, 2, 3
@@ -39,6 +37,7 @@ ANIMATIONS = {
     "projectile_explode": ["projectile_{:003}".format(frame) for frame in range(1, 3 + 1)],
     "skeleton_walk": ["Skeleton_Walk_{:003}".format(frame) for frame in range(1, 3 + 1)],
     "skeleton_death": ["Skeleton_Death_{:003}".format(frame) for frame in range(1, 3 + 1)],
+    "skeleton_walk": ["Skeleton_Walk_{:003}".format(frame) for frame in range(1, 3 + 1)],
 }
 
 for animation in chain.from_iterable(ANIMATIONS.values()):
@@ -61,6 +60,12 @@ ALLOWED_ENEMY = [
 WALLS = [
     "bricks1",
 ]
+
+TILE_MAPS = {
+    "bricks1": ((0, 0), (0, 0)),
+    "bloody_floor": ((1, 1), (1, 1)),
+    "blank": ((1, 1), (1, 1)),
+}
 
 SOUNDS = {}
 

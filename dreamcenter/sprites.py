@@ -1,4 +1,5 @@
 import enum
+import math
 import pygame as pg
 import operator
 import random
@@ -116,6 +117,7 @@ class Sprite(pg.sprite.Sprite):
         flipped_x=False,
         flipped_y=False,
         frames=None,
+        mask_left=None,
         animation_state=AnimationState.stopped,
     ):
         super().__init__(groups)
@@ -289,8 +291,9 @@ class Enemy(DirectedSprite):
         cooldown=100,
         cooldown_remaining=0,
         aggro_distance=500,
-        path=None,
         speed=2,
+        collision_damage=10,
+        currently_pathfinding=False,
         **kwargs
     ):
         # Tracks the offset, if any, if the image is flipped
@@ -299,16 +302,32 @@ class Enemy(DirectedSprite):
         self.cooldown = cooldown
         self.cooldown_remaining = cooldown_remaining
         self.aggro_distance = aggro_distance
-        self.path=path
-        self.speed=speed
+        self.speed = speed
+        self.collision_damage = collision_damage
+        self.currently_pathfinding = currently_pathfinding
         super().__init__(**kwargs)
 
     def update(self):
         super().update()
         if self.cooldown_remaining > 0:
             self.cooldown_remaining -= 1
+        if self.path:
+            self.animation_state = AnimationState.walking
+        else:
+            self.animation_state = AnimationState.stopped
+            self.currently_pathfinding = False
         if self.health <= 0:
             self.animation_state = AnimationState.dying
+
+    def direct_movement(self, target):
+        _v1 = Vector(target.rect.center)
+        _v2 = Vector(self.rect.center)
+        distance = int(round(math.sqrt((_v1[0]-_v2[0])**2 + (_v1[1]-_v2[1])**2)))
+        vh = (_v1 - _v2).normalize() * self.speed
+        self.path = zip(
+            accumulate(repeat(vh, distance), func=operator.add, initial=_v2),
+            repeat(0, distance),
+        )
 
 
 class Player(Sprite):
@@ -317,11 +336,12 @@ class Player(Sprite):
 
     def __init__(
         self,
-        cooldown=100,
+        cooldown=20,
         health=100,
-        damage=5,
+        damage=25,
         cooldown_remaining=0,
         position=[800, 500],
+        speed=10,
         state=SpriteState.unknown,
         **kwargs
     ):
@@ -331,6 +351,7 @@ class Player(Sprite):
         self.damage = damage
         self.cooldown = cooldown
         self.position = position
+        self.speed = speed
         self.cooldown_remaining = cooldown_remaining
 
     def update(self):
@@ -450,8 +471,11 @@ class SpriteManager:
             frames=create_animation_roll(
                 {
                     AnimationState.dying: extend(
-                        ANIMATIONS["skeleton_death"], 2
+                        ANIMATIONS["skeleton_death"], 7
                     ),
+                    AnimationState.walking: cycle(extend(
+                        ANIMATIONS["skeleton_walk"], 7
+                    )),
                 },
             ),
         )
@@ -470,7 +494,7 @@ class SpriteManager:
         )
         return shrub
 
-    def create_projectile(self, source, target, speed=1, max_distance=900, damage=5):
+    def create_projectile(self, source, target, speed=5, max_distance=900, damage=5):
         """
         Factory that creates a projectile sprite starting at `source`
         and moves toward `target` at `speed` before disappearing if it
