@@ -1,4 +1,5 @@
 import pygame as pg
+from pygame import Vector2 as Vector
 from dreamcenter.constants import (
     SCREENRECT,
     TILE_WIDTH,
@@ -91,5 +92,14 @@ def get_line(start, end):
     if swapped:
         points.reverse()
     return points
+
+
+def find_local_angle(source, target):
+    source_vec = Vector(source)
+    target_vec = Vector(target)
+    combined_vec = source_vec - target_vec
+    origin_vec = Vector(1, 0)
+    return origin_vec.angle_to(combined_vec)
+
 
 

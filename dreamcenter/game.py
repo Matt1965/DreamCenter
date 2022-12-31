@@ -32,6 +32,7 @@ from dreamcenter.helpers import (
     tile_position,
     tile_positions,
     get_line,
+    find_local_angle,
 )
 from dreamcenter.sprites import (
     Background,
@@ -383,7 +384,7 @@ class PlayerGroup:
 
     sprite_manager: SpriteManager
     player = None
-    collision_directions = {"top": False, "bottom": False, "left": False, "right": False}
+    movement_directions = {"top": False, "bottom": False, "left": False, "right": False}
     firing = False
 
     def spawn_player(self):
@@ -391,8 +392,8 @@ class PlayerGroup:
 
     def move_player(self):
         move = pg.math.Vector2(
-            self.collision_directions["right"] - self.collision_directions["left"],
-            self.collision_directions["bottom"] - self.collision_directions["top"]
+            self.movement_directions["right"] - self.movement_directions["left"],
+            self.movement_directions["bottom"] - self.movement_directions["top"]
         )
         if move.length_squared() > 0:
             move.scale_to_length(self.player.speed)
@@ -426,6 +427,7 @@ class EnemyGroup:
                 enemy.direct_movement(self.player)
                 if enemy.animation_state is not AnimationState.walking:
                     enemy.animation_state = AnimationState.walking
+            find_local_angle(enemy.rect.center, self.player.rect.center)
 
     def in_sight(self, enemy, target):
         line_of_sight = get_line(enemy.rect.center, target.rect.center)
@@ -451,6 +453,13 @@ class EnemyGroup:
             self.obstacles.append(obstacle)
         self.player = player
         self.grid = grid
+
+    def arrange_by_distance(self, group):
+        order = {}
+        for entity in group:
+            distance = Vector(entity.rect.center).distance_to(Vector(self.player.rect.center))
+            order.update({entity: distance})
+        return list(dict.keys({k: v for k, v in sorted(order.items(), key=lambda item: item[1])}))
 
     @staticmethod
     def find_pathfinding_path(position, target, grid, speed):
@@ -555,7 +564,8 @@ class GameEditing(GameLoop):
             if event.key == pg.K_e:
                 orientation = -90
                 self.sprite_manager.increment_orientation(orientation)
-
+            if event.key == pg.K_p:
+                self.game.state = GameState.main_menu
             if event.key == pg.K_F9:
                 self.try_open_level()
             elif event.key == pg.K_F5:
@@ -762,22 +772,24 @@ class GamePlaying(GameLoop):
     def handle_event(self, event):
         keys = pg.key.get_pressed()
         if keys[pg.K_w]:
-            self.player_group.collision_directions["top"] = True
+            self.player_group.movement_directions["top"] = True
         if keys[pg.K_s]:
-            self.player_group.collision_directions["bottom"] = True
+            self.player_group.movement_directions["bottom"] = True
         if keys[pg.K_a]:
-            self.player_group.collision_directions["left"] = True
+            self.player_group.movement_directions["left"] = True
         if keys[pg.K_d]:
-            self.player_group.collision_directions["right"] = True
+            self.player_group.movement_directions["right"] = True
+        if keys[pg.K_p]:
+            self.game.state = GameState.main_menu
         if event.type == pg.KEYUP:
             if event.key == pg.K_w:
-                self.player_group.collision_directions["top"] = False
+                self.player_group.movement_directions["top"] = False
             if event.key == pg.K_s:
-                self.player_group.collision_directions["bottom"] = False
+                self.player_group.movement_directions["bottom"] = False
             if event.key == pg.K_a:
-                self.player_group.collision_directions["left"] = False
+                self.player_group.movement_directions["left"] = False
             if event.key == pg.K_d:
-                self.player_group.collision_directions["right"] = False
+                self.player_group.movement_directions["right"] = False
         if event.type == pg.MOUSEBUTTONDOWN and event.button in (MOUSE_LEFT, MOUSE_RIGHT):
             if event.button == MOUSE_LEFT:
                 self.player_group.firing = True
@@ -797,31 +809,14 @@ class GamePlaying(GameLoop):
         walls = self.layers.get_sprites_from_layer(Layer.wall)
         for player, walls in collide_mask(player, walls):
             for wall in walls:
-                _top_line = (
-                    (player.rect.topleft[0] + 15, player.rect.topleft[1]),
-                    (player.rect.topright[0] - 15, player.rect.topright[1])
-                    )
-                _bottom_line = (
-                    (player.rect.bottomleft[0] + 15, player.rect.bottomleft[1]),
-                    (player.rect.bottomright[0] - 15, player.rect.bottomright[1])
-                    )
-                _left_line = (
-                    (player.rect.topleft[0], player.rect.topleft[1] + 25),
-                    (player.rect.bottomleft[0], player.rect.bottomleft[1] - 25)
-                    )
-                _right_line = (
-                    (player.rect.topright[0], player.rect.topright[1] + 25),
-                    (player.rect.bottomright[0], player.rect.bottomright[1] - 25)
-                    )
-
-                if wall.rect.clipline(_top_line):
-                    self.player_group.collision_directions["top"] = False
-                if wall.rect.clipline(_bottom_line):
-                    self.player_group.collision_directions["bottom"] = False
-                if wall.rect.clipline(_left_line):
-                    self.player_group.collision_directions["left"] = False
-                if wall.rect.clipline(_right_line):
-                    self.player_group.collision_directions["right"] = False
+                if wall.rect.collidepoint(player.rect.center):
+                    self.player_group.movement_directions["top"] = False
+                if wall.rect.collidepoint(player.rect.midbottom):
+                    self.player_group.movement_directions["bottom"] = False
+                if wall.rect.collidepoint((player.rect.midleft[0], player.rect.midleft[1] + player.rect.height/4)):
+                    self.player_group.movement_directions["left"] = False
+                if wall.rect.collidepoint((player.rect.midright[0], player.rect.midright[1] + player.rect.height/4)):
+                    self.player_group.movement_directions["right"] = False
 
         projectiles = self.layers.get_sprites_from_layer(Layer.projectile)
         enemies = self.layers.get_sprites_from_layer(Layer.enemy)
@@ -855,7 +850,17 @@ class GamePlaying(GameLoop):
         player = self.layers.get_sprites_from_layer(Layer.player)
         for player, enemies in collide_mask(player, enemies):
             for enemy in enemies:
-                player.health -= enemy.collision_damage
+                if player.invulnerable_remaining == 0:
+                    player.health -= enemy.collision_damage
+                    player.invulnerable_remaining = player.invulnerable_cooldown
+
+        enemies = self.layers.get_sprites_from_layer(Layer.enemy)
+        enemies = self.enemy_group.arrange_by_distance(enemies)
+        for enemy in enemies:
+            for enemy_collided in collide_mask_individual(enemy, enemies):
+                if enemy is not enemy_collided:
+                    enemy_collided.waiting = True
+            enemies.remove(enemy)
 
 
 def start_game():
@@ -875,6 +880,19 @@ def collide_mask(group_a, group_b):
         collided=pg.sprite.collide_mask,
     ).items():
         yield sprite_a, sprite_b
+
+
+def collide_mask_individual(sprite, group):
+    """
+    Uses the sprite mask attribute to check if a sprite collides with a group
+    """
+    for sprite_a in pg.sprite.spritecollide(
+        sprite,
+        group,
+        False,
+        collided=pg.sprite.collide_mask,
+    ):
+        yield sprite_a
 
 
 def create_tile_map(default_value=None) -> list:

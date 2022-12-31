@@ -28,16 +28,18 @@ SPRITES = {
     "play_background": "play_background.png",
     "blank": "blank.png",
     "bricks1": "bricks1.png",
+    "bricks2": "bricks2.png",
+    "bricks3": "bricks3.png",
     "bloody_floor": "bloody_floor.png",
     "projectile": "projectile.png",
     "skeleton": "Skeleton_Walk_000.png",
+    "collision_mask": "collision_mask.png"
 }
 
 ANIMATIONS = {
     "projectile_explode": ["projectile_{:003}".format(frame) for frame in range(1, 3 + 1)],
     "skeleton_walk": ["Skeleton_Walk_{:003}".format(frame) for frame in range(1, 3 + 1)],
     "skeleton_death": ["Skeleton_Death_{:003}".format(frame) for frame in range(1, 3 + 1)],
-    "skeleton_walk": ["Skeleton_Walk_{:003}".format(frame) for frame in range(1, 3 + 1)],
     "skeleton_stopped": ["Skeleton_Stopped_{:003}".format(frame) for frame in range(1, 3 + 1)],
 }
 
@@ -50,6 +52,8 @@ IMAGE_SPRITES: Dict[Tuple[bool, bool, str], pg.Surface] = {}
 
 ALLOWED_BG = [
     "bricks1",
+    "bricks2",
+    "bricks3",
     "bloody_floor",
     "blank",
 ]
@@ -60,10 +64,14 @@ ALLOWED_ENEMY = [
 
 WALLS = [
     "bricks1",
+    "bricks2",
+    "bricks3",
 ]
 
 TILE_MAPS = {
     "bricks1": ((0, 0), (0, 0)),
+    "bricks2": ((0, 0), (0, 0)),
+    "bricks3": ((0, 0), (0, 0)),
     "bloody_floor": ((1, 1), (1, 1)),
     "blank": ((1, 1), (1, 1)),
 }

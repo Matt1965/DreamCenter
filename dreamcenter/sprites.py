@@ -52,11 +52,11 @@ class SpriteState(enum.Enum):
 class Layer(enum.IntEnum):
 
     background = 0
+    wall = 20
     enemy = 40
     shrub = 50
     trap = 60
     player = 70
-    wall = 80
     projectile = 90
 
 
@@ -136,7 +136,12 @@ class Sprite(pg.sprite.Sprite):
         self._final_position = None
         self.animation_state = animation_state
         if self.image is not None:
-            self.mask = pg.mask.from_surface(self.image)
+            if self.index in ALLOWED_BG:
+                self.mask = pg.mask.from_surface(self.image)
+            else:
+                self.mask = pg.mask.from_surface(
+                    pg.transform.scale(IMAGE_SPRITES[(False, False, "collision_mask")], self.image.get_size())
+                    )
             self.surface = self.image.copy()
             self.rotate(self.orientation)
         if self.rect is not None and position is not None:
@@ -146,7 +151,12 @@ class Sprite(pg.sprite.Sprite):
         self.image = self.image_tiles[(self.flipped_x, self.flipped_y, index)]
         self.surface = self.image.copy()
         self.rect = self.image.get_rect(center=self.rect.center)
-        self.mask = pg.mask.from_surface(self.image)
+        if self.index in ALLOWED_BG:
+            self.mask = pg.mask.from_surface(self.image)
+        else:
+            self.mask = pg.mask.from_surface(
+                pg.transform.scale(IMAGE_SPRITES[(False, False, "collision_mask")], self.image.get_size())
+            )
         self.index = index
         self.rotate(self.orientation)
 
@@ -166,11 +176,24 @@ class Sprite(pg.sprite.Sprite):
         new_rect = new_image.get_rect(center=self.rect.center)
         self.image = new_image
         self.rect = new_rect
-        self.mask = pg.mask.from_surface(self.image)
+        if self.index in ALLOWED_BG:
+            self.mask = pg.mask.from_surface(self.image)
+        else:
+            self.mask = pg.mask.from_surface(
+                pg.transform.scale(IMAGE_SPRITES[(False, False, "collision_mask")], self.image.get_size())
+            )
         self._last_angle = angle
 
     def generate_rotation(self):
         return repeat(self.orientation)
+
+    def set_orientation(self, orientation):
+        """
+        Updates the orientation to `orientation`.
+        """
+        self.orientation = orientation
+        self.angle = self.generate_rotation()
+        self.rotate(next(self.angle))
 
     def animate(self):
         if self.frames is None:
@@ -207,20 +230,22 @@ class DirectedSprite(Sprite):
     Subclass of `Sprite` that understands basic motion and rotation.
     """
 
-    def __init__(self, path=None, state=SpriteState.unknown, **kwargs):
+    def __init__(self, path=None, state=SpriteState.unknown, waiting=False, **kwargs):
         super().__init__(**kwargs)
         self.state = state
         self.path = path
+        self.waiting = waiting
 
     def update(self):
         try:
             self.animate()
-            if self.path is not None:
+            if self.path is not None and not self.waiting:
                 self.state = SpriteState.moving
                 position, angle = next(self.path)
                 self.move(position)
                 self.rotate(angle + next(self.angle))
             self.play()
+            self.waiting = False
         except StopIteration:
             self.state = SpriteState.stopped
 
@@ -348,6 +373,8 @@ class Player(Sprite):
         position=[800, 500],
         speed=4,
         state=SpriteState.unknown,
+        invulnerable_remaining=0,
+        invulnerable_cooldown=20,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -358,10 +385,14 @@ class Player(Sprite):
         self.position = position
         self.speed = speed
         self.cooldown_remaining = cooldown_remaining
+        self.invulnerable_remaining = invulnerable_remaining
+        self.invulnerable_cooldown = invulnerable_cooldown
 
     def update(self):
         if self.cooldown_remaining > 0:
             self.cooldown_remaining -= 1
+        if self.invulnerable_remaining > 0:
+            self.invulnerable_remaining -= 1
         try:
             self.animate()
         except StopIteration:
@@ -547,14 +578,6 @@ class SpriteManager:
         orientation that never changes.
         """
         return repeat(self.orientation)
-
-    def set_orientation(self, orientation):
-        """
-        Updates the orientation to `orientation`.
-        """
-        self.orientation = orientation
-        self.angle = self.generate_rotation()
-        self.rotate(next(self.angle))
 
     def increment_orientation(self, relative_orientation):
         """
