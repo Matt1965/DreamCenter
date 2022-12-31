@@ -208,7 +208,6 @@ class Sprite(pg.sprite.Sprite):
         except StopIteration:
             if AnimationState.state_kills_sprite(self.animation_state):
                 self.kill()
-            self.animation_state = AnimationState.stopped
 
     def play(self):
         if self.sounds is not None and pg.mixer and self.channel is not None:
@@ -239,15 +238,17 @@ class DirectedSprite(Sprite):
     def update(self):
         try:
             self.animate()
-            if self.path is not None and not self.waiting:
+            if self.path is not None:
                 self.state = SpriteState.moving
-                position, angle = next(self.path)
-                self.move(position)
-                self.rotate(angle + next(self.angle))
+                if not self.waiting:
+                    position, angle = next(self.path)
+                    self.move(position)
+                    self.rotate(angle + next(self.angle))
             self.play()
             self.waiting = False
         except StopIteration:
-            self.state = SpriteState.stopped
+            if not self.waiting:
+                self.state = SpriteState.stopped
 
 
 class Text(DirectedSprite):
@@ -346,7 +347,6 @@ class Enemy(DirectedSprite):
             self.currently_pathfinding = False
         if self.health <= 0:
             self.animation_state = AnimationState.dying
-        self._final_position = self.rect.center
 
     def direct_movement(self, target):
         self._final_position = target.rect.center

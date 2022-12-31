@@ -855,9 +855,9 @@ class GamePlaying(GameLoop):
                     player.invulnerable_remaining = player.invulnerable_cooldown
 
         enemies = self.layers.get_sprites_from_layer(Layer.enemy)
-        enemies = self.enemy_group.arrange_by_distance(enemies)
-        for enemy in enemies:
-            for enemy_collided in collide_mask_individual(enemy, enemies):
+        enemies_arranged = self.enemy_group.arrange_by_distance(enemies)
+        for enemy in enemies_arranged:
+            for enemy_collided in pg.sprite.spritecollide(enemy, enemies, False, collided=pg.sprite.collide_mask):
                 if enemy is not enemy_collided:
                     enemy_collided.waiting = True
             enemies.remove(enemy)
@@ -880,19 +880,6 @@ def collide_mask(group_a, group_b):
         collided=pg.sprite.collide_mask,
     ).items():
         yield sprite_a, sprite_b
-
-
-def collide_mask_individual(sprite, group):
-    """
-    Uses the sprite mask attribute to check if a sprite collides with a group
-    """
-    for sprite_a in pg.sprite.spritecollide(
-        sprite,
-        group,
-        False,
-        collided=pg.sprite.collide_mask,
-    ):
-        yield sprite_a
 
 
 def create_tile_map(default_value=None) -> list:
