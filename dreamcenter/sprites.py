@@ -19,6 +19,7 @@ from dreamcenter.constants import (
     ALLOWED_ENEMY,
     ANIMATIONS,
     CACHE,
+    TILE_LAYER_TYPES,
 )
 
 
@@ -145,7 +146,10 @@ class Sprite(pg.sprite.Sprite):
             self.surface = self.image.copy()
             self.rotate(self.orientation)
         if self.rect is not None and position is not None:
-            self.move(position)
+            if self.index in ALLOWED_BG:
+                self.move(position, center=False)
+            else:
+                self.move(position)
 
     def set_sprite_index(self, index):
         self.image = self.image_tiles[(self.flipped_x, self.flipped_y, index)]
@@ -172,7 +176,12 @@ class Sprite(pg.sprite.Sprite):
     def rotate(self, angle):
         if angle == self._last_angle:
             return
-        new_image = pg.transform.rotate(self.surface, angle % 360)
+        try:
+            k = (self.rotate_cache_key(), angle)
+            new_image = CACHE[k]
+        except KeyError:
+            new_image = pg.transform.rotate(self.surface, angle)
+            CACHE[k] = new_image
         new_rect = new_image.get_rect(center=self.rect.center)
         self.image = new_image
         self.rect = new_rect
@@ -323,7 +332,7 @@ class Enemy(DirectedSprite):
         cooldown_remaining=0,
         aggro_distance=500,
         speed=2,
-        collision_damage=10,
+        collision_damage=1,
         currently_pathfinding=False,
         **kwargs
     ):
@@ -367,7 +376,7 @@ class Player(Sprite):
     def __init__(
         self,
         cooldown=20,
-        health=100,
+        health=8,
         damage=25,
         cooldown_remaining=0,
         position=[800, 500],
@@ -440,6 +449,13 @@ class Shrub(Sprite):
         pass
 
 
+class Health(Sprite):
+    _layer = Layer.shrub
+
+    def update(self):
+        pass
+
+
 @dataclass
 class SpriteManager:
 
@@ -474,16 +490,18 @@ class SpriteManager:
         )
         return wall
 
-    def create_debris(self, position, orientation=None, index=None):
-        debris = Shrub.create_from_sprite(
+    def create_health(self, position, orientation=None, index=None, flipped_x=False):
+        health = Health.create_from_sprite(
             sounds=None,
             groups=[self.layers],
             index=index,
-            orientatio=orientation
+            orientation=orientation,
+            flipped_x=flipped_x
         )
-        return debris
+        health.move(position, center=False)
+        return health
 
-    def create_player(self, position, orientation=None, index=None):
+    def create_player(self, position=(800, 500), orientation=None, index=None):
         player = Player.create_from_sprite(
             index="edwardo",
             groups=[self.layers],
@@ -532,7 +550,7 @@ class SpriteManager:
         )
         return shrub
 
-    def create_projectile(self, source, target, speed=5, max_distance=900, damage=5):
+    def create_projectile(self, source, target, speed=5, max_distance=200, damage=5):
         """
         Factory that creates a projectile sprite starting at `source`
         and moves toward `target` at `speed` before disappearing if it
@@ -593,7 +611,7 @@ class SpriteManager:
     def move(self, position):
         x, y = position
         for sprite in self.sprites:
-            if sprite.layer == Layer.background:
+            if sprite.layer in Layer[TILE_LAYER_TYPES]:
                 gx, gy = (x - (x % TILE_WIDTH), y - (y % TILE_HEIGHT))
                 sprite.move((gx, gy), center=False)
             else:
@@ -628,7 +646,7 @@ class SpriteManager:
             return
         new_index = next(self.indices)
         for sprite in self.sprites:
-            if sprite.layer in (Layer.background, Layer.shrub):
+            if sprite.layer in Layer[TILE_LAYER_TYPES]:
                 sprite.set_sprite_index(new_index)
         self._last_index = new_index
 

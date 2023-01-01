@@ -33,7 +33,11 @@ SPRITES = {
     "bloody_floor": "bloody_floor.png",
     "projectile": "projectile.png",
     "skeleton": "Skeleton_Walk_000.png",
-    "collision_mask": "collision_mask.png"
+    "collision_mask": "collision_mask.png",
+    "pause_menu": "pause_menu.png",
+    "game_over_splash": "game_over_splash.png",
+    "half_heart": "half_heart.png",
+    "empty_heart": "empty_heart.png",
 }
 
 ANIMATIONS = {
@@ -75,6 +79,12 @@ TILE_MAPS = {
     "bloody_floor": ((1, 1), (1, 1)),
     "blank": ((1, 1), (1, 1)),
 }
+
+TILE_LAYER_TYPES = (
+    "background",
+    "wall",
+    "trap",
+)
 
 SOUNDS = {}
 

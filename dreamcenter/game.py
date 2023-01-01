@@ -48,7 +48,6 @@ from dreamcenter.sprites import (
 
 
 class GameState(enum.Enum):
-
     # Error state
     unknown = "unknown"
     # Pre-initialization
@@ -62,7 +61,7 @@ class GameState(enum.Enum):
     # Main menu
     main_menu = "main_menu"
     # End of game screen
-    game_ended = "game_ended"
+    game_over = "game_ended"
     # Game is exiting
     quitting = "quitting"
 
@@ -76,7 +75,6 @@ class StateError(Exception):
 
 @dataclass
 class DreamGame:
-
     screen: pg.Surface
     screen_rect: pg.Rect
     fullscreen: bool
@@ -85,6 +83,7 @@ class DreamGame:
     game_menu: "GameLoop" = field(init=False, default=None)
     game_edit: "GameLoop" = field(init=False, default=None)
     game_play: "GameLoop" = field(init=False, default=None)
+    game_over: "GameLoop" = field(init=False, default=None)
 
     @classmethod
     def create(cls, fullscreen=False):
@@ -123,9 +122,13 @@ class DreamGame:
                 # Pass control to active game
                 self.game_play.try_open_level()
                 self.game_play.loop()
+            elif self.state == GameState.game_over:
+                # Pass control to pause menu
+                self.game_over.loop()
         self.quit()
 
-    def quit(self):
+    @staticmethod
+    def quit():
         pg.quit()
 
     def start_game(self):
@@ -158,6 +161,7 @@ class DreamGame:
         self.game_menu = GameMenu.create(self, IMAGE_SPRITES[(False, False, "background")])
         self.game_play = GamePlaying.create(self)
         self.game_edit = GameEditing.create(self)
+        self.game_over = GameOver.create(self, IMAGE_SPRITES[(False, False, "game_over_splash")])
         self.set_state(GameState.initialized)
 
 
@@ -167,9 +171,7 @@ class GameLoop:
 
     def handle_events(self):
         for event in pg.event.get():
-            if (
-                event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE
-            ) or event.type == pg.QUIT:
+            if event.type == pg.QUIT:
                 self.set_state(GameState.quitting)
             self.handle_event(event)
 
@@ -201,7 +203,6 @@ class GameLoop:
 
 @dataclass
 class MenuGroup:
-
     render_position: Vector = Vector(0, 0)
     selected_color: str = "red"
     not_selected_color: str = "black"
@@ -335,7 +336,7 @@ class GameMenu(GameLoop):
     def loop(self):
         clock = pg.time.Clock()
         background = create_surface()
-        background.blit(IMAGE_SPRITES[(False, False, "background")], (0,0))
+        background.blit(IMAGE_SPRITES[(False, False, "background")], (0, 0))
         group = pg.sprite.Group()
         menu_base_position = Vector(self.game.screen_rect.center)
         self.menu_group.render_position = menu_base_position
@@ -366,7 +367,7 @@ class GameMenu(GameLoop):
         )
 
         while self.state == GameState.main_menu:
-            self.screen.blit(background, (0,0))
+            self.screen.blit(background, (0, 0))
             menu.draw(self.screen)
             self.handle_events()
             menu.update()
@@ -381,14 +382,17 @@ class GameMenu(GameLoop):
 
 @dataclass
 class PlayerGroup:
-
     sprite_manager: SpriteManager
     player = None
+    empty_hearts = []
+    half_hearts = []
     movement_directions = {"top": False, "bottom": False, "left": False, "right": False}
     firing = False
 
     def spawn_player(self):
-        self.player = self.sprite_manager.create_player(SCREENRECT.center)
+        if self.player:
+            self.player.position = SCREENRECT.center
+        self.player = self.sprite_manager.create_player()
 
     def move_player(self):
         move = pg.math.Vector2(
@@ -408,6 +412,20 @@ class PlayerGroup:
     def update(self):
         self.move_player()
         self.fire_projectile()
+
+    def spawn_default_hearts(self):
+        print(self.player.health)
+        for i in range(int(self.player.health / 2)):
+            self.empty_hearts.append(self.sprite_manager.create_health(((i * TILE_WIDTH), 0), index="empty_heart"))
+            self.half_hearts.append(self.sprite_manager.create_health(((i * TILE_WIDTH), 0), index="half_heart"))
+            self.half_hearts.append(
+                self.sprite_manager.create_health(((i * TILE_WIDTH) + TILE_WIDTH / 2, 0),
+                                                  index="half_heart", flipped_x=True)
+            )
+
+        for i in range(len(self.half_hearts)):
+            if i % 2 == 0:
+                self.half_hearts[i].flipped_y = True
 
 
 @dataclass
@@ -468,10 +486,8 @@ class EnemyGroup:
         return zip(convert_path(grid_path, speed), repeat(0))
 
 
-
 @dataclass
 class GameEditing(GameLoop):
-
     background: pg.Surface
     sprite_manager: SpriteManager
     level: Optional[list]
@@ -512,7 +528,7 @@ class GameEditing(GameLoop):
             self.sprite_manager.empty()
 
     def draw_background(self):
-        self.background.blit(IMAGE_SPRITES[(False, False, "edit_background")], (0,0))
+        self.background.blit(IMAGE_SPRITES[(False, False, "edit_background")], (0, 0))
 
     def draw(self):
         self.screen.blit(self.background, (0, 0))
@@ -636,7 +652,6 @@ class GameEditing(GameLoop):
 
 @dataclass
 class GamePlaying(GameLoop):
-
     layers: pg.sprite.LayeredUpdates
     level: Optional[list]
     background: pg.Surface
@@ -715,6 +730,8 @@ class GamePlaying(GameLoop):
         self.layers.empty()
         self.level = create_background_tile_map(background)
         self.draw_background()
+        self.player_group.spawn_player()
+        self.player_group.spawn_default_hearts()
         for shrub in shrubs:
             self.sprite_manager.select_sprites(
                 self.sprite_manager.create_shrub(
@@ -746,9 +763,9 @@ class GamePlaying(GameLoop):
         self.layers.draw(self.screen)
 
     def loop(self):
-        clock = pg.time.Clock()
         loop_counter = 0
-        self.player_group.spawn_player()
+        clock = pg.time.Clock()
+
         self.pathfinding_grid = define_grid(self.level)
         self.enemy_group.add_entities(
             self.layers.get_sprites_from_layer(Layer.enemy),
@@ -764,6 +781,7 @@ class GamePlaying(GameLoop):
                 self.enemy_group.update()
             self.player_group.update()
             self.draw()
+            self.game_over_check()
             pg.display.flip()
             clock.tick(DESIRED_FPS)
             loop_counter += 1
@@ -771,6 +789,8 @@ class GamePlaying(GameLoop):
 
     def handle_event(self, event):
         keys = pg.key.get_pressed()
+        if keys[pg.K_ESCAPE]:
+            pass
         if keys[pg.K_w]:
             self.player_group.movement_directions["top"] = True
         if keys[pg.K_s]:
@@ -780,7 +800,7 @@ class GamePlaying(GameLoop):
         if keys[pg.K_d]:
             self.player_group.movement_directions["right"] = True
         if keys[pg.K_p]:
-            self.game.state = GameState.main_menu
+            self.set_state(GameState.main_menu)
         if event.type == pg.KEYUP:
             if event.key == pg.K_w:
                 self.player_group.movement_directions["top"] = False
@@ -813,9 +833,9 @@ class GamePlaying(GameLoop):
                     self.player_group.movement_directions["top"] = False
                 if wall.rect.collidepoint(player.rect.midbottom):
                     self.player_group.movement_directions["bottom"] = False
-                if wall.rect.collidepoint((player.rect.midleft[0], player.rect.midleft[1] + player.rect.height/4)):
+                if wall.rect.collidepoint((player.rect.midleft[0], player.rect.midleft[1] + player.rect.height / 4)):
                     self.player_group.movement_directions["left"] = False
-                if wall.rect.collidepoint((player.rect.midright[0], player.rect.midright[1] + player.rect.height/4)):
+                if wall.rect.collidepoint((player.rect.midright[0], player.rect.midright[1] + player.rect.height / 4)):
                     self.player_group.movement_directions["right"] = False
 
         projectiles = self.layers.get_sprites_from_layer(Layer.projectile)
@@ -862,6 +882,57 @@ class GamePlaying(GameLoop):
                     enemy_collided.waiting = True
             enemies.remove(enemy)
 
+    def game_over_check(self):
+        if self.player_group.player.health <= 0:
+            self.set_state(GameState.game_over)
+
+
+@dataclass
+class GameOver(GameMenu):
+    def loop(self):
+        clock = pg.time.Clock()
+        background = create_surface()
+        background.fill((0, 0, 0, 1))
+        background.blit(IMAGE_SPRITES[(False, False, "game_over_splash")], (450, 400))
+        group = pg.sprite.Group()
+        menu_base_position = Vector(self.game.screen_rect.center) + Vector(0, 20)
+        self.menu_group.not_selected_color = (255, 159, 10)
+        self.menu_group.render_position = menu_base_position
+        self.menu_group.clear()
+        self.menu_group.add(
+            text="New Patient",
+            size=40,
+            action=self.action_play,
+        )
+        self.menu_group.add(
+            text="Return to desk",
+            size=40,
+            action=self.action_main_menu,
+        )
+        self.menu_group.add(
+            text="Clock out",
+            size=40,
+            action=self.action_quit,
+        )
+        menu = pg.sprite.Group(
+            *self.menu_group.items
+        )
+        while self.state == GameState.game_over:
+            self.screen.blit(background, (0, 0))
+            menu.draw(self.screen)
+            self.handle_events()
+            menu.update()
+            # Instruct all sprites to update
+            group.update()
+            # Tell sprites where to draw
+            group.draw(self.screen)
+            pg.display.flip()
+            pg.display.set_caption(f"FPS {round(clock.get_fps())}")
+            clock.tick(DESIRED_FPS)
+
+    def action_main_menu(self):
+        self.set_state(GameState.main_menu)
+
 
 def start_game():
     game = DreamGame.create()
@@ -873,11 +944,11 @@ def collide_mask(group_a, group_b):
     Uses the sprite mask attribute to check if two groups of sprites are colliding.
     """
     for sprite_a, sprite_b in pg.sprite.groupcollide(
-        group_a,
-        group_b,
-        False,
-        False,
-        collided=pg.sprite.collide_mask,
+            group_a,
+            group_b,
+            False,
+            False,
+            collided=pg.sprite.collide_mask,
     ).items():
         yield sprite_a, sprite_b
 
@@ -958,6 +1029,7 @@ def open_dialog(title="Open file...", filetypes=(("Tower Defense Levels", "*json
         if f is not None:
             f.close()
 
+
 @contextmanager
 def save_dialog(title="Save file...", filetypes=(("Tower Defense Levels", "*.json"),)):
     f = tkinter.filedialog.asksaveasfile(title=title, filetypes=filetypes)
@@ -966,4 +1038,3 @@ def save_dialog(title="Save file...", filetypes=(("Tower Defense Levels", "*.jso
     finally:
         if f is not None:
             f.close()
-
