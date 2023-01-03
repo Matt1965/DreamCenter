@@ -1,7 +1,6 @@
 import random
 from dataclasses import dataclass, field
 from dreamcenter.constants import LEVEL_CONNECTIONS, MAP_GRID_UPPER_MAX
-import time
 
 
 @dataclass
@@ -11,7 +10,7 @@ class Map:
 
     def __post_init__(self):
         self.create_blank_grid()
-        self.map_grid[24][24]["growth"] = self.seed_amt
+        self.map_grid[9][9]["growth"] = self.seed_amt
 
     def create_blank_grid(self):
         for row in range(MAP_GRID_UPPER_MAX):
@@ -24,16 +23,17 @@ class Map:
         """
         Returns true if more than 1 of the 4 positions around grid_pos have a growth greater than 0
         """
-        _growth_counter = 0
+        counter = 0
 
         for x, y in [(1, 0), (0, 1), (-1, 0), (0, -1)]:
             try:
-                if self.map_grid[grid_pos[0] + x][grid_pos[1] + y]["growth"] > 0:
-                    _growth_counter += 1
+                if self.map_grid[grid_pos[0] + x][grid_pos[1] + y]["growth"] > 0 \
+                        or self.map_grid[grid_pos[0] + x][grid_pos[1] + y]["level"] != "blank":
+                    counter += 1
             except IndexError:
                 pass
 
-        return True if _growth_counter > 1 else False
+        return True if counter > 1 else False
 
     def distribute_growth(self, grid_pos):
         tiles = []
@@ -74,7 +74,7 @@ class Map:
         connections = [0, 0, 0, 0]
         counter = 0
         print("------------connection info-----------")
-        for y, x in [(1, 0), (0, -1), (-1, 0), (0, 1)]:
+        for y, x in [(-1, 0), (0, 1), (1, 0), (0, -1)]:
             try:
                 print(self.map_grid[grid_pos[0] + y][grid_pos[1] + x]["growth"])
                 if self.map_grid[grid_pos[0] + y][grid_pos[1] + x]["growth"] > 0 \
@@ -95,7 +95,7 @@ class Map:
         return matched_levels
 
     def define_seed(self, value):
-        self.map_grid[24][24]["growth"] = value
+        self.map_grid[9][9]["growth"] = value
 
     def generate_map(self):
         growing = True
@@ -114,7 +114,6 @@ class Map:
                         tile["level"] = random.choice(levels_matched)
                         tile["growth"] = 0
                         growing = True
-                        time.sleep(.5)
 
     def visualize_map(self):
         visualized_map = []

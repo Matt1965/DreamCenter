@@ -776,11 +776,10 @@ class GamePlaying(GameLoop):
             self.pathfinding_grid
         )
 
-        map_entity = Map(20)
+        map_entity = Map(10)
         map_entity.generate_map()
         for line in map_entity.visualize_map():
             print(line)
-        print(map_entity.map_grid[24][24]["level"])
 
         while self.state == GameState.game_playing:
             self.handle_events()

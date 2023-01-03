@@ -119,7 +119,7 @@ LEVEL_CONNECTIONS = {
     "left_right": (0, 1, 0, 1),
 }
 
-MAP_GRID_UPPER_MAX = 50
+MAP_GRID_UPPER_MAX = 20
 
 
 
