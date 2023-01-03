@@ -1,5 +1,6 @@
 import pygame as pg
 from pygame import Vector2 as Vector
+from math import atan2, degrees, pi
 from dreamcenter.constants import (
     SCREENRECT,
     TILE_WIDTH,
@@ -94,12 +95,17 @@ def get_line(start, end):
     return points
 
 
-def find_local_angle(source, target):
-    source_vec = Vector(source)
-    target_vec = Vector(target)
-    combined_vec = source_vec - target_vec
-    origin_vec = Vector(1, 0)
-    return origin_vec.angle_to(combined_vec)
+def angle_to(v1, v2):
+    """
+    Finds the angle between two vectors, `v1` and `v2`.
 
-
-
+    This function is clever enough to convert between cartesian and
+    screen coordinate systems and, thanks to `atan2`, all the gnarly
+    computational stuff you'd otherwise have to do with normal `atan`
+    is done for us.
+    """
+    dx, dy = v1 - v2
+    rads = atan2(-dy, dx)
+    rads %= 2 * pi
+    degs = degrees(rads)
+    return degs

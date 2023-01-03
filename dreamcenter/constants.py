@@ -38,6 +38,8 @@ SPRITES = {
     "game_over_splash": "game_over_splash.png",
     "half_heart": "half_heart.png",
     "empty_heart": "empty_heart.png",
+    "black": "black.png",
+    "wood_door": "wood_door.png",
 }
 
 ANIMATIONS = {
@@ -54,12 +56,15 @@ for animation in chain.from_iterable(ANIMATIONS.values()):
 # of (flipped_x, flipped_y, sprite_name)
 IMAGE_SPRITES: Dict[Tuple[bool, bool, str], pg.Surface] = {}
 
+
 ALLOWED_BG = [
     "bricks1",
     "bricks2",
     "bricks3",
     "bloody_floor",
     "blank",
+    "black",
+    "wood_door",
 ]
 
 ALLOWED_ENEMY = [
@@ -70,6 +75,7 @@ WALLS = [
     "bricks1",
     "bricks2",
     "bricks3",
+    "black",
 ]
 
 TILE_MAPS = {
@@ -78,13 +84,9 @@ TILE_MAPS = {
     "bricks3": ((0, 0), (0, 0)),
     "bloody_floor": ((1, 1), (1, 1)),
     "blank": ((1, 1), (1, 1)),
+    "black": ((0, 0), (0, 0)),
+    "wood_door": ((1, 1), (1, 1)),
 }
-
-TILE_LAYER_TYPES = (
-    "background",
-    "wall",
-    "trap",
-)
 
 SOUNDS = {}
 
@@ -93,5 +95,32 @@ KEY_BACKGROUND = 1
 KEY_SHRUB = 2
 
 CACHE = {}
+
+"""
+( UP, RIGHT, DOWN, LEFT )
+1 = door
+0 = no door
+"""
+LEVEL_CONNECTIONS = {
+    "4_way": (1, 1, 1, 1),
+    "3_way_no_down": (1, 1, 0, 1),
+    "3_way_no_up": (0, 1, 1, 1),
+    "3_way_no_left": (1, 1, 1, 0),
+    "3_way_no_right": (1, 0, 1, 1),
+    "down_dead": (0, 0, 1, 0),
+    "up_dead": (1, 0, 0, 0),
+    "left_dead": (0, 0, 0, 1),
+    "right_dead": (0, 1, 0, 0),
+    "down_left": (0, 0, 1, 1),
+    "down_right": (0, 1, 1, 0),
+    "up_left": (1, 0, 0, 1),
+    "up_right": (1, 1, 0, 0),
+    "up_down": (1, 0, 1, 0),
+    "left_right": (0, 1, 0, 1),
+}
+
+MAP_GRID_UPPER_MAX = 50
+
+
 
 

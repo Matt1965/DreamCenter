@@ -11,6 +11,7 @@ from dreamcenter.loader import import_image, import_sound, import_level
 from dataclasses import dataclass, field
 from typing import Optional, List
 from itertools import repeat
+from dreamcenter.map_logic import Map
 from dreamcenter.path_finding import define_grid, find_path, convert_path
 from dreamcenter.constants import (
     DESIRED_FPS,
@@ -32,7 +33,6 @@ from dreamcenter.helpers import (
     tile_position,
     tile_positions,
     get_line,
-    find_local_angle,
 )
 from dreamcenter.sprites import (
     Background,
@@ -390,8 +390,6 @@ class PlayerGroup:
     firing = False
 
     def spawn_player(self):
-        if self.player:
-            self.player.position = SCREENRECT.center
         self.player = self.sprite_manager.create_player()
 
     def move_player(self):
@@ -414,7 +412,6 @@ class PlayerGroup:
         self.fire_projectile()
 
     def spawn_default_hearts(self):
-        print(self.player.health)
         for i in range(int(self.player.health / 2)):
             self.empty_hearts.append(self.sprite_manager.create_health(((i * TILE_WIDTH), 0), index="empty_heart"))
             self.half_hearts.append(self.sprite_manager.create_health(((i * TILE_WIDTH), 0), index="half_heart"))
@@ -426,6 +423,10 @@ class PlayerGroup:
         for i in range(len(self.half_hearts)):
             if i % 2 == 0:
                 self.half_hearts[i].flipped_y = True
+
+    def take_damage(self, damage):
+        self.player.health -= damage
+        self.half_hearts.pop().kill()
 
 
 @dataclass
@@ -445,7 +446,6 @@ class EnemyGroup:
                 enemy.direct_movement(self.player)
                 if enemy.animation_state is not AnimationState.walking:
                     enemy.animation_state = AnimationState.walking
-            find_local_angle(enemy.rect.center, self.player.rect.center)
 
     def in_sight(self, enemy, target):
         line_of_sight = get_line(enemy.rect.center, target.rect.center)
@@ -699,11 +699,13 @@ class GamePlaying(GameLoop):
                 self.sprite_manager.create_wall(
                     position=(dx, dy),
                     index=background_tile.index,
+                    orientation=background_tile.orientation,
                 )
             else:
                 self.sprite_manager.create_background(
                     position=(dx, dy),
                     index=background_tile.index,
+                    orientation=background_tile.orientation,
                 )
 
     def try_open_level(self):
@@ -774,6 +776,12 @@ class GamePlaying(GameLoop):
             self.pathfinding_grid
         )
 
+        map_entity = Map(20)
+        map_entity.generate_map()
+        for line in map_entity.visualize_map():
+            print(line)
+        print(map_entity.map_grid[24][24]["level"])
+
         while self.state == GameState.game_playing:
             self.handle_events()
             self.handle_collision()
@@ -797,8 +805,10 @@ class GamePlaying(GameLoop):
             self.player_group.movement_directions["bottom"] = True
         if keys[pg.K_a]:
             self.player_group.movement_directions["left"] = True
+            self.player_group.player.flipped_x = True
         if keys[pg.K_d]:
             self.player_group.movement_directions["right"] = True
+            self.player_group.player.flipped_x = False
         if keys[pg.K_p]:
             self.set_state(GameState.main_menu)
         if event.type == pg.KEYUP:
@@ -871,8 +881,8 @@ class GamePlaying(GameLoop):
         for player, enemies in collide_mask(player, enemies):
             for enemy in enemies:
                 if player.invulnerable_remaining == 0:
-                    player.health -= enemy.collision_damage
                     player.invulnerable_remaining = player.invulnerable_cooldown
+                    self.player_group.take_damage(enemy.collision_damage)
 
         enemies = self.layers.get_sprites_from_layer(Layer.enemy)
         enemies_arranged = self.enemy_group.arrange_by_distance(enemies)

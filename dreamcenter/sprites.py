@@ -7,7 +7,7 @@ from pygame import Vector2 as Vector
 from dataclasses import dataclass, field
 from typing import Generator, Optional, Dict
 from itertools import cycle, repeat, count, accumulate
-from dreamcenter.helpers import extend
+from dreamcenter.helpers import extend, angle_to
 from dreamcenter.constants import (
     IMAGE_SPRITES,
     TILE_HEIGHT,
@@ -19,7 +19,6 @@ from dreamcenter.constants import (
     ALLOWED_ENEMY,
     ANIMATIONS,
     CACHE,
-    TILE_LAYER_TYPES,
 )
 
 
@@ -246,6 +245,7 @@ class DirectedSprite(Sprite):
 
     def update(self):
         try:
+            self.flip_check()
             self.animate()
             if self.path is not None:
                 self.state = SpriteState.moving
@@ -258,6 +258,19 @@ class DirectedSprite(Sprite):
         except StopIteration:
             if not self.waiting:
                 self.state = SpriteState.stopped
+
+    def flip_check(self):
+        """
+        angle of 90 -> 270 is facing right
+        angle of 270 -> 90 is facing left
+        """
+        if not self._final_position:
+            return
+        _angle = round(angle_to(Vector(self.rect.center), Vector(self._final_position)), 0)
+        if _angle not in range(90, 270):
+            self.flipped_x = True
+        else:
+            self.flipped_x = False
 
 
 class Text(DirectedSprite):
@@ -501,7 +514,7 @@ class SpriteManager:
         health.move(position, center=False)
         return health
 
-    def create_player(self, position=(800, 500), orientation=None, index=None):
+    def create_player(self, position=(800, 500)):
         player = Player.create_from_sprite(
             index="edwardo",
             groups=[self.layers],
@@ -548,6 +561,7 @@ class SpriteManager:
             index=index,
             orientation=orientation,
         )
+        shrub.move(position)
         return shrub
 
     def create_projectile(self, source, target, speed=5, max_distance=200, damage=5):
@@ -561,7 +575,6 @@ class SpriteManager:
         vh = (v1 - v2).normalize() * speed
         path = zip(
             accumulate(repeat(vh, max_distance), func=operator.add, initial=v2),
-            # It's a rock, so let's make it rotate a bit as it flies
             count(random.randint(0, 180)),
         )
         projectile = Projectile.create_from_sprite(
@@ -611,7 +624,8 @@ class SpriteManager:
     def move(self, position):
         x, y = position
         for sprite in self.sprites:
-            if sprite.layer in Layer[TILE_LAYER_TYPES]:
+            print(sprite.layer)
+            if sprite.layer in (Layer.background, Layer.wall, Layer.trap):
                 gx, gy = (x - (x % TILE_WIDTH), y - (y % TILE_HEIGHT))
                 sprite.move((gx, gy), center=False)
             else:
@@ -642,11 +656,12 @@ class SpriteManager:
 
         Note this only works with background and shrub sprites.
         """
+        print("i hit")
         if self.indices is None:
             return
         new_index = next(self.indices)
         for sprite in self.sprites:
-            if sprite.layer in Layer[TILE_LAYER_TYPES]:
+            if sprite.layer in (Layer.background, Layer.wall, Layer.trap):
                 sprite.set_sprite_index(new_index)
         self._last_index = new_index
 
