@@ -73,7 +73,6 @@ class Map:
     def connection_finder(self, grid_pos):
         connections = [0, 0, 0, 0]
         counter = 0
-        print("------------connection info-----------")
         for y, x in [(-1, 0), (0, 1), (1, 0), (0, -1)]:
             try:
                 print(self.map_grid[grid_pos[0] + y][grid_pos[1] + x]["growth"])
@@ -83,7 +82,6 @@ class Map:
             except IndexError:
                 pass
             counter += 1
-        print("--------------------------------------")
         return tuple(connections)
 
     @staticmethod
@@ -100,17 +98,13 @@ class Map:
     def generate_map(self):
         growing = True
         while growing:
-            print('growing...')
             growing = False
             for row in self.map_grid:
                 for tile in row:
                     if tile["growth"] > 0:
-                        print(tile)
                         self.distribute_growth(tile["position"])
                         connections_found = self.connection_finder(tile["position"])
-                        print(connections_found)
                         levels_matched = self.level_matcher(connections_found)
-                        print(levels_matched)
                         tile["level"] = random.choice(levels_matched)
                         tile["growth"] = 0
                         growing = True

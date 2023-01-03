@@ -110,6 +110,11 @@ class DreamGame:
             )
 
     def loop(self):
+        map_entity = Map(10)
+        map_entity.generate_map()
+        for line in map_entity.visualize_map():
+            print(line)
+
         while self.state != GameState.quitting:
             if self.state == GameState.main_menu:
                 # Pass control to game menu's loop
@@ -775,11 +780,6 @@ class GamePlaying(GameLoop):
             self.player_group.player,
             self.pathfinding_grid
         )
-
-        map_entity = Map(10)
-        map_entity.generate_map()
-        for line in map_entity.visualize_map():
-            print(line)
 
         while self.state == GameState.game_playing:
             self.handle_events()
