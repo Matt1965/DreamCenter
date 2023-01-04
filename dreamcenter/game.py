@@ -1,5 +1,6 @@
 import math
 import pygame as pg
+import os
 import time
 from pygame import Vector2 as Vector
 import enum
@@ -27,6 +28,8 @@ from dreamcenter.constants import (
     KEY_ENEMY,
     WALLS,
     TILE_WIDTH,
+    STARTING_POSITION,
+    DOORS,
 )
 from dreamcenter.helpers import (
     create_surface,
@@ -37,6 +40,7 @@ from dreamcenter.helpers import (
 from dreamcenter.sprites import (
     Background,
     Wall,
+    Door,
     Trap,
     Sprite,
     Layer,
@@ -110,11 +114,6 @@ class DreamGame:
             )
 
     def loop(self):
-        map_entity = Map(10)
-        map_entity.generate_map()
-        for line in map_entity.visualize_map():
-            print(line)
-
         while self.state != GameState.quitting:
             if self.state == GameState.main_menu:
                 # Pass control to game menu's loop
@@ -125,7 +124,8 @@ class DreamGame:
                 self.game_edit.loop()
             elif self.state == GameState.game_playing:
                 # Pass control to active game
-                self.game_play.try_open_level()
+                self.game_play.generate_map()
+                self.game_play.change_level()
                 self.game_play.loop()
             elif self.state == GameState.game_over:
                 # Pass control to pause menu
@@ -398,14 +398,13 @@ class PlayerGroup:
         self.player = self.sprite_manager.create_player()
 
     def move_player(self):
-        move = pg.math.Vector2(
+        move = Vector(
             self.movement_directions["right"] - self.movement_directions["left"],
             self.movement_directions["bottom"] - self.movement_directions["top"]
         )
         if move.length_squared() > 0:
             move.scale_to_length(self.player.speed)
-            self.player.position[0] += move[0]
-            self.player.position[1] += move[1]
+            self.player.position += move
 
     def fire_projectile(self):
         if self.player.cooldown_remaining == 0 and self.firing is True:
@@ -655,6 +654,7 @@ class GameEditing(GameLoop):
                 )
 
 
+
 @dataclass
 class GamePlaying(GameLoop):
     layers: pg.sprite.LayeredUpdates
@@ -664,6 +664,8 @@ class GamePlaying(GameLoop):
     player_group: PlayerGroup
     enemy_group: EnemyGroup
     pathfinding_grid: []
+    map_manager: Map
+    level_position: List[int] = field(default_factory=lambda: [19, 19])
 
     @classmethod
     def create(cls, game):
@@ -673,6 +675,7 @@ class GamePlaying(GameLoop):
             background=create_surface(),
             layers=layers,
             level=None,
+            map_manager=Map(),
             pathfinding_grid=None,
             sprite_manager=SpriteManager(
                 sprites=pg.sprite.LayeredUpdates(),
@@ -696,11 +699,20 @@ class GamePlaying(GameLoop):
             )
         )
 
+    def __post_init__(self):
+        self.player_group.spawn_player()
+
     def draw_background(self):
         self.background.blit(IMAGE_SPRITES[(False, False, "play_background")], (0, 0))
         for (y, x, dx, dy) in tile_positions():
             background_tile = self.level[y][x]
-            if background_tile.index in WALLS:
+            if background_tile.index in DOORS:
+                self.sprite_manager.create_door(
+                    position=(dx, dy),
+                    index=background_tile.index,
+                    orientation=background_tile.orientation,
+                )
+            elif background_tile.index in WALLS:
                 self.sprite_manager.create_wall(
                     position=(dx, dy),
                     index=background_tile.index,
@@ -713,15 +725,34 @@ class GamePlaying(GameLoop):
                     orientation=background_tile.orientation,
                 )
 
-    def try_open_level(self):
-        """
-        Tries to open a level with the open dialog. If the user cancels out, do nothing.
-        """
-        with open_dialog() as open_file:
-            if open_file is not None:
-                self.open_level(open_file)
-            else:
-                self.create_blank_level()
+    def generate_map(self):
+        self.map_manager.generate_map()
+        for item in self.map_manager.visualize_map():
+            print(item)
+
+    def determine_level(self):
+        return self.map_manager.map_grid[self.level_position[0]][self.level_position[1]]["level"]
+
+    def change_level(self, direction="start"):
+        print(self.level_position)
+        print(direction)
+        match direction:
+            case "up":
+                self.level_position[0] -= 1
+                self.player_group.player.position += Vector([0, 425])
+            case "down":
+                self.level_position[0] += 1
+                self.player_group.player.position += Vector([0, -425])
+            case "left":
+                self.level_position[1] -= 1
+                self.player_group.player.position += Vector([1450, 0])
+            case "right":
+                self.level_position[1] += 1
+                self.player_group.player.position += Vector([-1450, 0])
+            case "start":
+                pass
+        level = self.determine_level()
+        self.open_level(import_level(level + ".json"))
 
     def open_level(self, file_obj):
         data = json.loads(file_obj.read())
@@ -734,10 +765,9 @@ class GamePlaying(GameLoop):
         Given a valid tile map of `background` tiles, and a list
         of `shrubs`, load them into the game and reset the game.
         """
-        self.layers.empty()
+        self.curated_sprite_removal()
         self.level = create_background_tile_map(background)
         self.draw_background()
-        self.player_group.spawn_player()
         self.player_group.spawn_default_hearts()
         for shrub in shrubs:
             self.sprite_manager.select_sprites(
@@ -891,9 +921,36 @@ class GamePlaying(GameLoop):
                     enemy_collided.waiting = True
             enemies.remove(enemy)
 
+        player = self.layers.get_sprites_from_layer(Layer.player)
+        doors = self.layers.get_sprites_from_layer(Layer.door)
+        for player, doors in collide_mask(player, doors):
+            for door in doors:
+                if door.rect.center[0] < 50:
+                    self.change_level("left")
+                    break
+                if door.rect.center[0] > 1550:
+                    self.change_level("right")
+                    break
+                if door.rect.center[1] < 50:
+                    self.change_level("up")
+                    break
+                if door.rect.center[1] > 950:
+                    self.change_level("down")
+                    break
+
     def game_over_check(self):
         if self.player_group.player.health <= 0:
             self.set_state(GameState.game_over)
+
+    def curated_sprite_removal(self):
+        sprites = []
+        for group in Layer:
+            if group == Layer.player:
+                continue
+            self.layers.remove_sprites_of_layer(group)
+
+
+
 
 
 @dataclass
@@ -1037,6 +1094,7 @@ def open_dialog(title="Open file...", filetypes=(("Tower Defense Levels", "*json
     finally:
         if f is not None:
             f.close()
+
 
 
 @contextmanager

@@ -53,6 +53,7 @@ class Layer(enum.IntEnum):
 
     background = 0
     wall = 20
+    door = 30
     enemy = 40
     shrub = 50
     trap = 60
@@ -393,7 +394,7 @@ class Player(Sprite):
         damage=25,
         cooldown_remaining=0,
         position=[800, 500],
-        speed=4,
+        speed=10,
         state=SpriteState.unknown,
         invulnerable_remaining=0,
         invulnerable_cooldown=20,
@@ -443,6 +444,12 @@ class Background(Sprite):
 
 class Wall(Sprite):
     _layer = Layer.wall
+
+    def update(self):
+        pass
+
+class Door(Sprite):
+    _layer = Layer.door
 
     def update(self):
         pass
@@ -502,6 +509,16 @@ class SpriteManager:
             position=position,
         )
         return wall
+
+    def create_door(self, position, orientation=None, index=None):
+        door = Door.create_from_sprite(
+            sounds=None,
+            groups=[self.layers],
+            index=index,
+            orientation=orientation,
+            position=position,
+        )
+        return door
 
     def create_health(self, position, orientation=None, index=None, flipped_x=False):
         health = Health.create_from_sprite(
@@ -625,7 +642,7 @@ class SpriteManager:
         x, y = position
         for sprite in self.sprites:
             print(sprite.layer)
-            if sprite.layer in (Layer.background, Layer.wall, Layer.trap):
+            if sprite.layer in (Layer.background, Layer.wall, Layer.trap, Layer.door):
                 gx, gy = (x - (x % TILE_WIDTH), y - (y % TILE_HEIGHT))
                 sprite.move((gx, gy), center=False)
             else:
@@ -661,7 +678,7 @@ class SpriteManager:
             return
         new_index = next(self.indices)
         for sprite in self.sprites:
-            if sprite.layer in (Layer.background, Layer.wall, Layer.trap):
+            if sprite.layer in (Layer.background, Layer.wall, Layer.trap, Layer.door):
                 sprite.set_sprite_index(new_index)
         self._last_index = new_index
 

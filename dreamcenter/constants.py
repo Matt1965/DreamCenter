@@ -78,6 +78,10 @@ WALLS = [
     "black",
 ]
 
+DOORS = [
+    "wood_door",
+]
+
 TILE_MAPS = {
     "bricks1": ((0, 0), (0, 0)),
     "bricks2": ((0, 0), (0, 0)),
@@ -119,9 +123,8 @@ LEVEL_CONNECTIONS = {
     "left_right": (0, 1, 0, 1),
 }
 
-MAP_GRID_UPPER_MAX = 20
-STARTING_POSITION = (9, 9)
-
+MAP_GRID_UPPER_MAX = 40
+STARTING_POSITION = (19, 19)
 
 
 

@@ -5,19 +5,26 @@ from dreamcenter.constants import LEVEL_CONNECTIONS, MAP_GRID_UPPER_MAX
 
 @dataclass
 class Map:
-    seed_amt: int
+    seed_amt: int = field(default=20)
     map_grid: list[list[dict]] = field(default_factory=list)
 
     def __post_init__(self):
         self.create_blank_grid()
-        self.map_grid[9][9]["growth"] = self.seed_amt
+        self.map_grid[19][19]["level"] = "4_way"
+
+    def set_starting_growth(self, growth):
+        self.seed_amt = growth
 
     def create_blank_grid(self):
+        """
+        Creates a blank map of {"level": "blank", "growth": 0, "position": (row, column)} for size of grid
+        """
         for row in range(MAP_GRID_UPPER_MAX):
             _temp_column = []
             for column in range(MAP_GRID_UPPER_MAX):
                 _temp_column.append({"level": "blank", "growth": 0, "position": (row, column)})
             self.map_grid.append(_temp_column)
+        self.map_grid[19][19]["growth"] = self.seed_amt
 
     def check_cardinals(self, grid_pos):
         """
@@ -61,7 +68,6 @@ class Map:
                 tile["growth"] = 1
         elif len(tiles) == 0:
             self.redistribute_growth(growth_amt)
-            return
         else:
             for i in range(growth_amt):
                 bucket = random.randint(0, len(tiles)-1)
@@ -92,12 +98,10 @@ class Map:
                 matched_levels.append(key)
         return matched_levels
 
-    def define_seed(self, value):
-        self.map_grid[9][9]["growth"] = value
-
     def generate_map(self):
         growing = True
         while growing:
+            print('growing')
             growing = False
             for row in self.map_grid:
                 for tile in row:
