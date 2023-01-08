@@ -5,7 +5,7 @@ from dreamcenter.constants import LEVEL_CONNECTIONS, MAP_GRID_UPPER_MAX
 
 @dataclass
 class Map:
-    seed_amt: int = field(default=20)
+    seed_amt: int = field(default=15)
     map_grid: list[list[dict]] = field(default_factory=list)
 
     def __post_init__(self):
@@ -46,9 +46,6 @@ class Map:
         tiles = []
         growth_amt = self.map_grid[grid_pos[0]][grid_pos[1]]["growth"]
 
-        if growth_amt == 1:
-            return
-
         for x, y in [(1, 0), (0, 1), (-1, 0), (0, -1)]:
             try:
                 tiles.append(self.map_grid[grid_pos[0] + x][grid_pos[1] + y])
@@ -62,13 +59,11 @@ class Map:
                 tiles.remove(tile)
 
         if len(tiles) == 1:
-            tiles[0]["growth"] = growth_amt
-        elif len(tiles) == growth_amt:
-            for tile in tiles:
-                tile["growth"] = 1
+            tiles[0]["growth"] = growth_amt - 1
         elif len(tiles) == 0:
             self.redistribute_growth(growth_amt)
         else:
+            growth_amt -= 1
             for i in range(growth_amt):
                 bucket = random.randint(0, len(tiles)-1)
                 tiles[bucket]["growth"] += 1
@@ -81,7 +76,6 @@ class Map:
         counter = 0
         for y, x in [(-1, 0), (0, 1), (1, 0), (0, -1)]:
             try:
-                print(self.map_grid[grid_pos[0] + y][grid_pos[1] + x]["growth"])
                 if self.map_grid[grid_pos[0] + y][grid_pos[1] + x]["growth"] > 0 \
                         or self.map_grid[grid_pos[0] + y][grid_pos[1] + x]["level"] != "blank":
                     connections[counter] = 1
@@ -101,12 +95,12 @@ class Map:
     def generate_map(self):
         growing = True
         while growing:
-            print('growing')
             growing = False
             for row in self.map_grid:
                 for tile in row:
-                    if tile["growth"] > 0:
+                    if tile["growth"] > 1:
                         self.distribute_growth(tile["position"])
+                    if tile["growth"] > 0:
                         connections_found = self.connection_finder(tile["position"])
                         levels_matched = self.level_matcher(connections_found)
                         tile["level"] = random.choice(levels_matched)
@@ -115,9 +109,12 @@ class Map:
 
     def visualize_map(self):
         visualized_map = []
+        level_count = 0
         for row in self.map_grid:
             temp_row = []
             for tile in row:
                 temp_row.append(tile["level"])
+                if tile["level"] != "blank":
+                    level_count += 1
             visualized_map.append(temp_row)
         return visualized_map

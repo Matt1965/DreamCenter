@@ -58,6 +58,7 @@ class Layer(enum.IntEnum):
     shrub = 50
     trap = 60
     player = 70
+    health = 80
     projectile = 90
 
 
@@ -394,10 +395,10 @@ class Player(Sprite):
         damage=25,
         cooldown_remaining=0,
         position=[800, 500],
-        speed=10,
+        speed=5,
         state=SpriteState.unknown,
         invulnerable_remaining=0,
-        invulnerable_cooldown=20,
+        invulnerable_cooldown=40,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -448,6 +449,7 @@ class Wall(Sprite):
     def update(self):
         pass
 
+
 class Door(Sprite):
     _layer = Layer.door
 
@@ -470,7 +472,7 @@ class Shrub(Sprite):
 
 
 class Health(Sprite):
-    _layer = Layer.shrub
+    _layer = Layer.health
 
     def update(self):
         pass

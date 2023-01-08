@@ -8,6 +8,7 @@ import json
 import tkinter
 import tkinter.filedialog
 from contextlib import contextmanager
+from pathfinding.core.grid import Grid
 from dreamcenter.loader import import_image, import_sound, import_level
 from dataclasses import dataclass, field
 from typing import Optional, List
@@ -476,6 +477,10 @@ class EnemyGroup:
         self.player = player
         self.grid = grid
 
+    def clear_entities(self):
+        self.obstacles.clear()
+        self.enemies.clear()
+
     def arrange_by_distance(self, group):
         order = {}
         for entity in group:
@@ -701,6 +706,7 @@ class GamePlaying(GameLoop):
 
     def __post_init__(self):
         self.player_group.spawn_player()
+        self.player_group.spawn_default_hearts()
 
     def draw_background(self):
         self.background.blit(IMAGE_SPRITES[(False, False, "play_background")], (0, 0))
@@ -734,15 +740,13 @@ class GamePlaying(GameLoop):
         return self.map_manager.map_grid[self.level_position[0]][self.level_position[1]]["level"]
 
     def change_level(self, direction="start"):
-        print(self.level_position)
-        print(direction)
         match direction:
             case "up":
                 self.level_position[0] -= 1
-                self.player_group.player.position += Vector([0, 425])
+                self.player_group.player.position += Vector([0, 855])
             case "down":
                 self.level_position[0] += 1
-                self.player_group.player.position += Vector([0, -425])
+                self.player_group.player.position += Vector([0, -855])
             case "left":
                 self.level_position[1] -= 1
                 self.player_group.player.position += Vector([1450, 0])
@@ -768,7 +772,6 @@ class GamePlaying(GameLoop):
         self.curated_sprite_removal()
         self.level = create_background_tile_map(background)
         self.draw_background()
-        self.player_group.spawn_default_hearts()
         for shrub in shrubs:
             self.sprite_manager.select_sprites(
                 self.sprite_manager.create_shrub(
@@ -787,6 +790,17 @@ class GamePlaying(GameLoop):
                 )
             )
             self.sprite_manager.place(enemy["position"])
+        if self.pathfinding_grid:
+            Grid.cleanup(self.pathfinding_grid)
+        if self.enemy_group.enemies:
+            self.enemy_group.clear_entities()
+        self.enemy_group.add_entities(
+            self.layers.get_sprites_from_layer(Layer.enemy),
+            self.layers.get_sprites_from_layer(Layer.wall),
+            self.player_group.player,
+            self.pathfinding_grid
+        )
+        self.pathfinding_grid = define_grid(self.level)
 
     def create_blank_level(self):
         """
@@ -802,14 +816,6 @@ class GamePlaying(GameLoop):
     def loop(self):
         loop_counter = 0
         clock = pg.time.Clock()
-
-        self.pathfinding_grid = define_grid(self.level)
-        self.enemy_group.add_entities(
-            self.layers.get_sprites_from_layer(Layer.enemy),
-            self.layers.get_sprites_from_layer(Layer.wall),
-            self.player_group.player,
-            self.pathfinding_grid
-        )
 
         while self.state == GameState.game_playing:
             self.handle_events()
@@ -923,7 +929,7 @@ class GamePlaying(GameLoop):
 
         player = self.layers.get_sprites_from_layer(Layer.player)
         doors = self.layers.get_sprites_from_layer(Layer.door)
-        for player, doors in collide_mask(player, doors):
+        for player, doors in collide_mask(player, doors, pg.sprite.collide_circle_ratio(.5)):
             for door in doors:
                 if door.rect.center[0] < 50:
                     self.change_level("left")
@@ -943,9 +949,8 @@ class GamePlaying(GameLoop):
             self.set_state(GameState.game_over)
 
     def curated_sprite_removal(self):
-        sprites = []
         for group in Layer:
-            if group == Layer.player:
+            if group in (Layer.player, Layer.health):
                 continue
             self.layers.remove_sprites_of_layer(group)
 
@@ -1005,7 +1010,7 @@ def start_game():
     game.start_game()
 
 
-def collide_mask(group_a, group_b):
+def collide_mask(group_a, group_b, collide_type=pg.sprite.collide_mask):
     """
     Uses the sprite mask attribute to check if two groups of sprites are colliding.
     """
@@ -1014,7 +1019,7 @@ def collide_mask(group_a, group_b):
             group_b,
             False,
             False,
-            collided=pg.sprite.collide_mask,
+            collided=collide_type,
     ).items():
         yield sprite_a, sprite_b
 
