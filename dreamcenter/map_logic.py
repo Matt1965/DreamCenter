@@ -22,7 +22,7 @@ class Map:
         for row in range(MAP_GRID_UPPER_MAX):
             _temp_column = []
             for column in range(MAP_GRID_UPPER_MAX):
-                _temp_column.append({"level": "blank", "growth": 0, "position": (row, column)})
+                _temp_column.append({"level": "blank", "growth": 0, "position": (row, column), "saved_state": {}})
             self.map_grid.append(_temp_column)
         self.map_grid[19][19]["growth"] = self.seed_amt
 

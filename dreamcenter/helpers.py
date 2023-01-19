@@ -1,5 +1,6 @@
 import pygame as pg
-from pygame import Vector2 as Vector
+import tkinter
+from contextlib import contextmanager
 from math import atan2, degrees, pi
 from dreamcenter.constants import (
     SCREENRECT,
@@ -7,6 +8,8 @@ from dreamcenter.constants import (
     TILE_HEIGHT,
     TILES_X,
     TILES_Y,
+    CONNECTION_MATCH,
+    IMAGE_SPRITES,
 )
 
 
@@ -109,3 +112,67 @@ def angle_to(v1, v2):
     rads %= 2 * pi
     degs = degrees(rads)
     return degs
+
+
+def collide_mask(group_a, group_b, collide_type=pg.sprite.collide_mask):
+    """
+    Uses the sprite mask attribute to check if two groups of sprites are colliding.
+    """
+    for sprite_a, sprite_b in pg.sprite.groupcollide(
+            group_a,
+            group_b,
+            False,
+            False,
+            collided=collide_type,
+    ).items():
+        yield sprite_a, sprite_b
+
+
+def create_tile_map(default_value=None) -> list:
+    """
+    Creates a grid tile map with default value of None
+    """
+    return [[default_value for _ in range(TILES_X)] for _ in range(TILES_Y)]
+
+
+def connection_match_builder():
+    CONNECTION_MATCH.update({(1, 1, 1, 1): IMAGE_SPRITES[(False, False, "map_4_way")]})
+    CONNECTION_MATCH.update({(1, 1, 0, 1): pg.transform.rotate(IMAGE_SPRITES[(False, False, "map_3_way")], 90)})
+    CONNECTION_MATCH.update({(0, 1, 1, 1): pg.transform.rotate(IMAGE_SPRITES[(False, False, "map_3_way")], 270)})
+    CONNECTION_MATCH.update({(1, 1, 1, 0): IMAGE_SPRITES[(False, False, "map_3_way")]})
+    CONNECTION_MATCH.update({(1, 0, 1, 1): IMAGE_SPRITES[(True, False, "map_3_way")]})
+    CONNECTION_MATCH.update({(0, 0, 1, 0): IMAGE_SPRITES[(False, True, "map_1_way")]})
+    CONNECTION_MATCH.update({(1, 0, 0, 0): IMAGE_SPRITES[(False, False, "map_1_way")]})
+    CONNECTION_MATCH.update({(0, 0, 0, 1): pg.transform.rotate(IMAGE_SPRITES[(False, False, "map_1_way")], 90)})
+    CONNECTION_MATCH.update({(0, 1, 0, 0): pg.transform.rotate(IMAGE_SPRITES[(False, False, "map_1_way")], 270)})
+    CONNECTION_MATCH.update({(0, 0, 1, 1): IMAGE_SPRITES[(True, True, "map_2_way")]})
+    CONNECTION_MATCH.update({(0, 1, 1, 0): IMAGE_SPRITES[(False, True, "map_2_way")]})
+    CONNECTION_MATCH.update({(1, 0, 0, 1): IMAGE_SPRITES[(True, False, "map_2_way")]})
+    CONNECTION_MATCH.update({(1, 1, 0, 0): IMAGE_SPRITES[(False, False, "map_2_way")]})
+    CONNECTION_MATCH.update({(1, 0, 1, 0): IMAGE_SPRITES[(False, False, "map_2_way_straight")]})
+    CONNECTION_MATCH.update({(0, 1, 0, 1): pg.transform.rotate(IMAGE_SPRITES[(False, False, "map_2_way_straight")], 90)})
+
+
+@contextmanager
+def open_dialog(title="Open file...", filetypes=(("Tower Defense Levels", "*json"),)):
+    """
+    Context manager that yields the opened file, which could be
+    None if the user exits it without selecting. If there is a file it
+    is closed when the context manager exits.
+    """
+    try:
+        f = tkinter.filedialog.askopenfile(title=title, filetypes=filetypes)
+        yield f
+    finally:
+        if f is not None:
+            f.close()
+
+
+@contextmanager
+def save_dialog(title="Save file...", filetypes=(("Tower Defense Levels", "*.json"),)):
+    f = tkinter.filedialog.asksaveasfile(title=title, filetypes=filetypes)
+    try:
+        yield f
+    finally:
+        if f is not None:
+            f.close()

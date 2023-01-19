@@ -57,6 +57,7 @@ class Layer(enum.IntEnum):
     enemy = 40
     shrub = 50
     trap = 60
+    item = 65
     player = 70
     health = 80
     projectile = 90
@@ -330,6 +331,41 @@ class Projectile(DirectedSprite):
         super().update()
         if self.state == SpriteState.stopped:
             self.animation_state = AnimationState.exploding
+        if self.animation_state == AnimationState.exploding:
+            self.path = None
+
+
+class Item(DirectedSprite):
+    _layer = Layer.item
+
+    def __init__(
+        self,
+        item_type=str,
+        target=None,
+        action=None,
+        value=1,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.item_type = item_type
+        self.target = target
+        self.action = action
+        self.value = value
+
+    def action_sorter(self):
+        match self.item_type:
+            case "money":
+                self.action_money()
+            case "health":
+                self.action_health()
+            case "unknown":
+                pass
+
+    def action_money(self):
+        self.target.money += self.value
+
+    def action_health(self):
+        self.target.health += self.value
 
 
 class Enemy(DirectedSprite):
@@ -395,10 +431,11 @@ class Player(Sprite):
         damage=25,
         cooldown_remaining=0,
         position=[800, 500],
-        speed=5,
+        speed=8,
         state=SpriteState.unknown,
         invulnerable_remaining=0,
         invulnerable_cooldown=40,
+        money=0,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -411,6 +448,7 @@ class Player(Sprite):
         self.cooldown_remaining = cooldown_remaining
         self.invulnerable_remaining = invulnerable_remaining
         self.invulnerable_cooldown = invulnerable_cooldown
+        self.money = money
 
     def update(self):
         if self.cooldown_remaining > 0:

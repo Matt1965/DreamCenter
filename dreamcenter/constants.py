@@ -40,6 +40,14 @@ SPRITES = {
     "empty_heart": "empty_heart.png",
     "black": "black.png",
     "wood_door": "wood_door.png",
+    "map_4_way": "map_4_way.png",
+    "map_3_way": "map_3_way.png",
+    "map_2_way": "map_2_way.png",
+    "map_2_way_straight": "map_2_way_straight.png",
+    "map_1_way": "map_1_way.png",
+    "map_border": "map_border.png",
+    "map_display": "map_display.png",
+    "map_you_are_here": "map_you_are_here.png",
 }
 
 ANIMATIONS = {
@@ -122,6 +130,8 @@ LEVEL_CONNECTIONS = {
     "up_down": (1, 0, 1, 0),
     "left_right": (0, 1, 0, 1),
 }
+
+CONNECTION_MATCH = {}
 
 MAP_GRID_UPPER_MAX = 40
 STARTING_POSITION = (19, 19)
