@@ -48,10 +48,13 @@ SPRITES = {
     "map_border": "map_border.png",
     "map_display": "map_display.png",
     "map_you_are_here": "map_you_are_here.png",
+    "money": "money_000.png",
+    "text": "blank.png",
 }
 
 ANIMATIONS = {
     "projectile_explode": ["projectile_{:003}".format(frame) for frame in range(1, 3 + 1)],
+    "money_stopped": ["Money_{:003}".format(frame) for frame in range(1, 4 + 1)],
     "skeleton_walk": ["Skeleton_Walk_{:003}".format(frame) for frame in range(1, 3 + 1)],
     "skeleton_death": ["Skeleton_Death_{:003}".format(frame) for frame in range(1, 3 + 1)],
     "skeleton_stopped": ["Skeleton_Stopped_{:003}".format(frame) for frame in range(1, 3 + 1)],
@@ -90,6 +93,9 @@ DOORS = [
     "wood_door",
 ]
 
+"""
+(top left, top right), (bottom left, bottom right)
+"""
 TILE_MAPS = {
     "bricks1": ((0, 0), (0, 0)),
     "bricks2": ((0, 0), (0, 0)),
@@ -135,6 +141,25 @@ CONNECTION_MATCH = {}
 
 MAP_GRID_UPPER_MAX = 40
 STARTING_POSITION = (19, 19)
+
+ENEMY_STATS = {
+    "skeleton": {
+        "value": 5,
+        "health": 50,
+        "aggro_distance": 500,
+        "speed": 2,
+        "collision_damage": 1,
+        "anim_dying": ANIMATIONS["skeleton_death"],
+        "anim_walk": ANIMATIONS["skeleton_walk"],
+        "anim_stop": ANIMATIONS["skeleton_stopped"],
+    }
+}
+
+ITEM_STATS = {
+    "money": {
+        "anim_stop": ANIMATIONS["money_stopped"],
+    }
+}
 
 
 

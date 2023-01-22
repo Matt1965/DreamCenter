@@ -9,6 +9,7 @@ from dreamcenter.map_logic import Map
 from dreamcenter.path_finding import define_grid
 from dreamcenter.player_group import PlayerGroup
 from dreamcenter.enemy_group import EnemyGroup
+from dreamcenter.text_group import TextGroup
 from dreamcenter.game_state import GameState
 from dreamcenter.game import GameLoop
 from dreamcenter.game import save_level, create_background_tile_map
@@ -44,6 +45,7 @@ class GamePlaying(GameLoop):
     sprite_manager: SpriteManager
     player_group: PlayerGroup
     enemy_group: EnemyGroup
+    text_group: TextGroup
     pathfinding_grid: []
     map_manager: Map
     show_map: bool
@@ -79,8 +81,15 @@ class GamePlaying(GameLoop):
                     layers=layers,
                     indices=None,
                 ),
-                player=None
-            )
+                player=None,
+            ),
+            text_group=TextGroup(
+                sprite_manager=SpriteManager(
+                    sprites=pg.sprite.LayeredUpdates(),
+                    layers=layers,
+                    indices=None,
+                )
+            ),
         )
 
     def __post_init__(self):
@@ -192,6 +201,7 @@ class GamePlaying(GameLoop):
             self.pathfinding_grid
         )
         self.pathfinding_grid = define_grid(self.level)
+        self.text_group.define_initial_texts()
 
     def create_blank_level(self):
         """
@@ -230,17 +240,29 @@ class GamePlaying(GameLoop):
         self.screen.blit(self.map_display, (250, 190))
         self.screen.blit(IMAGE_SPRITES[(False, False, "map_border")], (180, 125))
 
+    def update_text_values(self):
+        for item in self.text_group.text_sprites:
+            match item.text_type:
+                case "money":
+                    item.set_text(f"Fragments: {self.player_group.player.money}")
+                case _:
+                    pass
+
     def loop(self):
         loop_counter = 0
         clock = pg.time.Clock()
+        text_layer = pg.sprite.Group(*self.text_group.text_sprites)
 
         while self.state == GameState.game_playing:
+            text_layer.update()
+            self.update_text_values()
             self.handle_events()
             self.handle_collision()
             if loop_counter % 10 == 0:
                 self.enemy_group.update()
             self.player_group.update()
             self.draw()
+            text_layer.draw(self.screen)
             self.game_over_check()
             pg.display.flip()
             clock.tick(DESIRED_FPS)
@@ -330,7 +352,7 @@ class GamePlaying(GameLoop):
                 )
                 enemy.currently_pathfinding = True
                 enemy.animation_state = AnimationState.walking
-                enemy._final_position = self.player_group.player.rect.center
+                enemy.final_position = self.player_group.player.rect.center
 
         enemies = self.layers.get_sprites_from_layer(Layer.enemy)
         player = self.layers.get_sprites_from_layer(Layer.player)
@@ -350,7 +372,7 @@ class GamePlaying(GameLoop):
 
         player = self.layers.get_sprites_from_layer(Layer.player)
         doors = self.layers.get_sprites_from_layer(Layer.door)
-        for player, doors in collide_mask(player, doors, pg.sprite.collide_circle_ratio(.5)):
+        for player, doors in collide_mask(player, doors, pg.sprite.collide_circle_ratio(.6)):
             for door in doors:
                 if door.rect.center[0] < 50:
                     self.change_level("left")
@@ -364,6 +386,19 @@ class GamePlaying(GameLoop):
                 if door.rect.center[1] > 950:
                     self.change_level("down")
                     break
+
+        items = self.layers.get_sprites_from_layer(Layer.item)
+        for item in items:
+            for item_collided in pg.sprite.spritecollide(item, items, False, collided=pg.sprite.collide_mask):
+                if item is not item_collided:
+                    item_collided.random_movement(15)
+
+        items = self.layers.get_sprites_from_layer(Layer.item)
+        player = self.layers.get_sprites_from_layer(Layer.player)
+        for player, items in collide_mask(player, items, pg.sprite.collide_circle_ratio(2)):
+            for item in items:
+                item.action()
+                item.kill()
 
     def game_over_check(self):
         if self.player_group.player.health <= 0:

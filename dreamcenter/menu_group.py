@@ -64,7 +64,7 @@ class MenuGroup:
         offset = Vector(
             0,
             sum(
-                menu_item.font.get_height() + menu_item.font.get_linesize()
+                menu_item.rect.height * 2
                 for menu_item in self.items
             ),
         )

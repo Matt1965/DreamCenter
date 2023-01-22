@@ -37,11 +37,24 @@ class PlayerGroup:
 
     def spawn_default_hearts(self):
         for i in range(int(self.player.health / 2)):
-            self.empty_hearts.append(self.sprite_manager.create_health(((i * TILE_WIDTH), 0), index="empty_heart"))
-            self.half_hearts.append(self.sprite_manager.create_health(((i * TILE_WIDTH), 0), index="half_heart"))
+            self.empty_hearts.append(
+                self.sprite_manager.create_health(
+                    ((i * TILE_WIDTH + TILE_WIDTH/2), TILE_WIDTH/2),
+                    index="empty_heart"
+                )
+            )
             self.half_hearts.append(
-                self.sprite_manager.create_health(((i * TILE_WIDTH) + TILE_WIDTH / 2, 0),
-                                                  index="half_heart", flipped_x=True)
+                self.sprite_manager.create_health(
+                    ((i * TILE_WIDTH) + TILE_WIDTH / 4, TILE_WIDTH / 2),
+                    index="half_heart"
+                )
+            )
+            self.half_hearts.append(
+                self.sprite_manager.create_health(
+                    ((i * TILE_WIDTH) + TILE_WIDTH / 1.35, TILE_WIDTH / 2),
+                    index="half_heart",
+                    flipped_x=True
+                )
             )
 
         for i in range(len(self.half_hearts)):

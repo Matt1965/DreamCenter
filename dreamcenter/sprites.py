@@ -19,6 +19,8 @@ from dreamcenter.constants import (
     ALLOWED_ENEMY,
     ANIMATIONS,
     CACHE,
+    ENEMY_STATS,
+    ITEM_STATS,
 )
 
 
@@ -61,6 +63,7 @@ class Layer(enum.IntEnum):
     player = 70
     health = 80
     projectile = 90
+    text = 100
 
 
 class Sprite(pg.sprite.Sprite):
@@ -134,9 +137,10 @@ class Sprite(pg.sprite.Sprite):
         self.flipped_x = flipped_x
         self.flipped_y = flipped_y
         self.frames = frames
+        self.position = position
         self.angle = self.generate_rotation()
         self._last_angle = None
-        self._final_position = None
+        self.final_position = position
         self.animation_state = animation_state
         if self.image is not None:
             if self.index in ALLOWED_BG:
@@ -240,10 +244,11 @@ class DirectedSprite(Sprite):
     Subclass of `Sprite` that understands basic motion and rotation.
     """
 
-    def __init__(self, path=None, state=SpriteState.unknown, waiting=False, **kwargs):
+    def __init__(self, path=None, state=SpriteState.unknown, waiting=False, speed=3, **kwargs):
         super().__init__(**kwargs)
         self.state = state
         self.path = path
+        self.speed = speed
         self.waiting = waiting
 
     def update(self):
@@ -259,6 +264,7 @@ class DirectedSprite(Sprite):
             self.play()
             self.waiting = False
         except StopIteration:
+            self.path = None
             if not self.waiting:
                 self.state = SpriteState.stopped
 
@@ -267,13 +273,42 @@ class DirectedSprite(Sprite):
         angle of 90 -> 270 is facing right
         angle of 270 -> 90 is facing left
         """
-        if not self._final_position:
+        if not self.final_position:
             return
-        _angle = round(angle_to(Vector(self.rect.center), Vector(self._final_position)), 0)
+        _angle = round(angle_to(Vector(self.rect.center), Vector(self.final_position)), 0)
         if _angle not in range(90, 270):
             self.flipped_x = True
         else:
             self.flipped_x = False
+
+    def direct_movement(self, target):
+        self.final_position = target
+        _v1 = Vector(target)
+        _v2 = Vector(self.rect.center)
+        distance = int(round(math.sqrt((_v1[0]-_v2[0])**2 + (_v1[1]-_v2[1])**2)))
+        vh = (_v1 - _v2).normalize() * self.speed
+        self.path = zip(
+            accumulate(repeat(vh, int(distance/2)), func=operator.add, initial=_v2),
+            repeat(0, int(distance/2)),
+        )
+
+    def random_movement(self, interval):
+        if self.path:
+            return
+        angle = random.randint(0, 360)
+        target = (
+            int(interval * math.sin(angle) + self.rect.center[0]),
+            int(interval * math.cos(angle) + self.rect.center[1])
+        )
+        self.final_position = target
+        _v1 = Vector(target)
+        _v2 = Vector(self.rect.center)
+        distance = int(round(math.sqrt((_v1[0]-_v2[0])**2 + (_v1[1]-_v2[1])**2)))
+        vh = (_v1 - _v2).normalize() * self.speed
+        self.path = zip(
+            accumulate(repeat(vh, int(distance/2)), func=operator.add, initial=_v2),
+            repeat(0, int(distance/2)),
+        )
 
 
 class Text(DirectedSprite):
@@ -285,10 +320,21 @@ class Text(DirectedSprite):
     taken if the item is invoked somehow.
     """
 
-    def __init__(self, text, color, size, action=None, path=None, **kwargs):
+    def __init__(
+            self,
+            text,
+            color,
+            size,
+            text_type=None,
+            font=FONT_NAME,
+            action=None,
+            path=None,
+            **kwargs
+    ):
         self.color = color
         self.size = size
-        self.font = pg.font.Font(FONT_NAME, size)
+        self.text_type = text_type
+        self.font = font
         self.action = action
         self.rect = pg.Rect(0, 0, 0, 0)
         self.set_text(text)
@@ -311,7 +357,8 @@ class Text(DirectedSprite):
         self.render_text()
 
     def render_text(self):
-        self.image = self.font.render(self.text, True, self.color)
+        pg_font = pg.font.Font(self.font, self.size)
+        self.image = pg_font.render(self.text, True, self.color)
         self.surface = self.image
         self.rect = self.image.get_rect(center=self.rect.center)
 
@@ -355,9 +402,9 @@ class Item(DirectedSprite):
     def action_sorter(self):
         match self.item_type:
             case "money":
-                self.action_money()
+                self.action = self.action_money
             case "health":
-                self.action_health()
+                self.action = self.action_health
             case "unknown":
                 pass
 
@@ -367,13 +414,12 @@ class Item(DirectedSprite):
     def action_health(self):
         self.target.health += self.value
 
+    def update(self):
+        super().update()
+        self.action_sorter()
+
 
 class Enemy(DirectedSprite):
-    """
-    Subclass of `DirectedSprite` that additionally adds subtle
-    rotation to the Enemy to mimic human gait.
-    """
-
     _layer = Layer.enemy
 
     def __init__(
@@ -382,8 +428,8 @@ class Enemy(DirectedSprite):
         cooldown=100,
         cooldown_remaining=0,
         aggro_distance=500,
-        speed=2,
         collision_damage=1,
+        value=1,
         currently_pathfinding=False,
         **kwargs
     ):
@@ -393,8 +439,8 @@ class Enemy(DirectedSprite):
         self.cooldown = cooldown
         self.cooldown_remaining = cooldown_remaining
         self.aggro_distance = aggro_distance
-        self.speed = speed
         self.collision_damage = collision_damage
+        self.value = value
         self.currently_pathfinding = currently_pathfinding
         super().__init__(**kwargs)
 
@@ -402,22 +448,9 @@ class Enemy(DirectedSprite):
         super().update()
         if self.cooldown_remaining > 0:
             self.cooldown_remaining -= 1
-        if self.rect.center == self._final_position:
+        if not self.path and self.animation_state != AnimationState.dying:
             self.animation_state = AnimationState.stopped
             self.currently_pathfinding = False
-        if self.health <= 0:
-            self.animation_state = AnimationState.dying
-
-    def direct_movement(self, target):
-        self._final_position = target.rect.center
-        _v1 = Vector(target.rect.center)
-        _v2 = Vector(self.rect.center)
-        distance = int(round(math.sqrt((_v1[0]-_v2[0])**2 + (_v1[1]-_v2[1])**2)))
-        vh = (_v1 - _v2).normalize() * self.speed
-        self.path = zip(
-            accumulate(repeat(vh, int(distance/2)), func=operator.add, initial=_v2),
-            repeat(0, int(distance/2)),
-        )
 
 
 class Player(Sprite):
@@ -566,10 +599,32 @@ class SpriteManager:
             groups=[self.layers],
             index=index,
             orientation=orientation,
-            flipped_x=flipped_x
+            flipped_x=flipped_x,
+            position=position,
         )
-        health.move(position, center=False)
         return health
+
+
+    def create_item(self, position, item_type, target, index=None):
+        base_index = index.split("_")[0].lower()
+        if index is None:
+            index = self._last_index
+        item = Item.create_from_sprite(
+            index=next(self.indices) if index is None else index,
+            groups=[self.layers],
+            state=SpriteState.stopped,
+            position=position,
+            item_type=item_type,
+            target=target,
+            frames=create_animation_roll(
+                {
+                    AnimationState.stopped: cycle(extend(
+                        ITEM_STATS[base_index]["anim_stop"], 20
+                    )),
+                },
+            )
+        )
+        return [item]
 
     def create_player(self, position=(800, 500)):
         player = Player.create_from_sprite(
@@ -581,6 +636,7 @@ class SpriteManager:
         return player
 
     def create_enemy(self, position, orientation=None, index=None):
+        base_index = index.split("_")[0].lower()
         if index is None:
             index = self._last_index
         if orientation is None:
@@ -589,18 +645,24 @@ class SpriteManager:
         enemy = Enemy.create_from_sprite(
             index=next(self.indices) if index is None else index,
             groups=[self.layers],
-            state=SpriteState.moving,
+            state=SpriteState.stopped,
             sounds=None,
+            position=position,
+            value=ENEMY_STATS[base_index]["value"],
+            health=ENEMY_STATS[base_index]["health"],
+            speed=ENEMY_STATS[base_index]["speed"],
+            collision_damage=ENEMY_STATS[base_index]["collision_damage"],
+            aggro_distance=ENEMY_STATS[base_index]["aggro_distance"],
             frames=create_animation_roll(
                 {
                     AnimationState.dying: extend(
-                        ANIMATIONS["skeleton_death"], 7
+                        ENEMY_STATS[base_index]["anim_dying"], 7
                     ),
                     AnimationState.walking: cycle(extend(
-                        ANIMATIONS["skeleton_walk"], 7
+                        ENEMY_STATS[base_index]["anim_walk"], 7
                     )),
                     AnimationState.stopped: cycle(extend(
-                        ANIMATIONS["skeleton_stopped"], 20
+                        ENEMY_STATS[base_index]["anim_stop"], 20
                     )),
                 },
             ),
@@ -681,7 +743,6 @@ class SpriteManager:
     def move(self, position):
         x, y = position
         for sprite in self.sprites:
-            print(sprite.layer)
             if sprite.layer in (Layer.background, Layer.wall, Layer.trap, Layer.door):
                 gx, gy = (x - (x % TILE_WIDTH), y - (y % TILE_HEIGHT))
                 sprite.move((gx, gy), center=False)
@@ -713,7 +774,6 @@ class SpriteManager:
 
         Note this only works with background and shrub sprites.
         """
-        print("i hit")
         if self.indices is None:
             return
         new_index = next(self.indices)

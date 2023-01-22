@@ -1,3 +1,4 @@
+import random
 from dataclasses import dataclass, field
 from typing import List
 from pygame import Vector2 as Vector
@@ -21,9 +22,14 @@ class EnemyGroup:
     def update(self):
         for enemy in self.enemies:
             if self.in_sight(enemy, self.player):
-                enemy.direct_movement(self.player)
+                enemy.direct_movement(self.player.rect.center)
                 if enemy.animation_state is not AnimationState.walking:
                     enemy.animation_state = AnimationState.walking
+            if enemy.health <= 0:
+                enemy.path = None
+                self.handle_drops(enemy)
+                enemy.animation_state = AnimationState.dying
+                self.enemies.remove(enemy)
 
     def in_sight(self, enemy, target):
         line_of_sight = get_line(enemy.rect.center, target.rect.center)
@@ -53,6 +59,15 @@ class EnemyGroup:
     def clear_entities(self):
         self.obstacles.clear()
         self.enemies.clear()
+
+    def handle_drops(self, enemy):
+        for _ in range(random.randint(0, enemy.value)):
+            self.sprite_manager.create_item(
+                index="money",
+                item_type="money",
+                position=enemy.rect.center,
+                target=self.player
+            )
 
     def arrange_by_distance(self, group):
         order = {}
