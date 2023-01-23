@@ -430,12 +430,14 @@ class Buff(DirectedSprite):
         item_type=str,
         target=None,
         action=None,
+        cost=0,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.item_type = item_type
         self.target = target
         self.action = action
+        self.cost = cost
 
     def action_sorter(self):
         match self.index:

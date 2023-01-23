@@ -4,7 +4,7 @@ import pygame as pg
 import os
 import time
 import json
-from dreamcenter.loader import import_image, import_sound, import_level
+from dreamcenter.loader import import_image
 from dataclasses import dataclass, field
 from dreamcenter.game_state import GameState, StateError
 from dreamcenter.constants import (
@@ -231,7 +231,7 @@ def save_level(tile_map, shrubs, enemies, traps, buffs, items, file_obj=None, re
         )
     data["traps"] = output_traps
     for item in items:
-        output_buffs.append(
+        output_items.append(
             {
                 "index": item.index,
                 "position": item.rect.center,

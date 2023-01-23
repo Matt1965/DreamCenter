@@ -64,7 +64,6 @@ class EnemyGroup:
         for _ in range(random.randint(0, enemy.value)):
             self.sprite_manager.create_item(
                 index="money",
-                item_type="money",
                 position=enemy.rect.center,
                 target=self.player
             )
