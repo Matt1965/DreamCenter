@@ -21,6 +21,7 @@ from dreamcenter.constants import (
     CACHE,
     ENEMY_STATS,
     ITEM_STATS,
+    ALLOWED_BUFFS,
 )
 
 
@@ -62,6 +63,7 @@ class Layer(enum.IntEnum):
     item = 65
     player = 70
     health = 80
+    buff = 85
     projectile = 90
     text = 100
 
@@ -387,25 +389,25 @@ class Item(DirectedSprite):
 
     def __init__(
         self,
-        item_type=str,
+        base_index=str,
         target=None,
         action=None,
         value=1,
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.item_type = item_type
+        self.base_index = base_index
         self.target = target
         self.action = action
         self.value = value
 
     def action_sorter(self):
-        match self.item_type:
+        match self.base_index:
             case "money":
                 self.action = self.action_money
             case "health":
                 self.action = self.action_health
-            case "unknown":
+            case _:
                 pass
 
     def action_money(self):
@@ -416,7 +418,64 @@ class Item(DirectedSprite):
 
     def update(self):
         super().update()
-        self.action_sorter()
+        if not self.action:
+            self.action_sorter()
+
+
+class Buff(DirectedSprite):
+    _layer = Layer.buff
+
+    def __init__(
+        self,
+        item_type=str,
+        target=None,
+        action=None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.item_type = item_type
+        self.target = target
+        self.action = action
+
+    def action_sorter(self):
+        match self.index:
+            case "buff_nova":
+                self.action = self.action_nova
+            case "buff_acumen":
+                self.action = self.action_acumen
+            case "buff_intuitus":
+                self.action = self.action_intuitus
+            case "buff_pax":
+                self.action = self.action_pax
+            case "buff_corpus":
+                self.action = self.action_corpus
+            case _:
+                pass
+
+    def action_nova(self):
+        self.target.damage += 1
+        self.target.cooldown += 1
+
+    def action_acumen(self):
+        self.target.cooldown -= 1
+        self.target.range -= 1
+
+    def action_intuitus(self):
+        self.target.range += 1
+        self.target.speed -= 1
+
+    def action_pax(self):
+        self.target.speed += 1
+        self.target.health -= 1
+
+    def action_corpus(self):
+        self.target.health += 1
+        self.target.damage -= 1
+
+    def update(self):
+        super().update()
+        if not self.action:
+            self.action_sorter()
 
 
 class Enemy(DirectedSprite):
@@ -583,6 +642,16 @@ class SpriteManager:
         )
         return wall
 
+    def create_trap(self, position, orientation=None, index=None):
+        trap = Trap.create_from_sprite(
+            sounds=None,
+            groups=[self.layers],
+            index=index,
+            orientation=orientation,
+            position=position,
+        )
+        return trap
+
     def create_door(self, position, orientation=None, index=None):
         door = Door.create_from_sprite(
             sounds=None,
@@ -604,17 +673,17 @@ class SpriteManager:
         )
         return health
 
-
-    def create_item(self, position, item_type, target, index=None):
-        base_index = index.split("_")[0].lower()
-        if index is None:
+    def create_item(self, position, target, index=None):
+        if index:
+            base_index = index.split("_")[0].lower()
+        else:
             index = self._last_index
         item = Item.create_from_sprite(
             index=next(self.indices) if index is None else index,
             groups=[self.layers],
             state=SpriteState.stopped,
             position=position,
-            item_type=item_type,
+            base_index=base_index,
             target=target,
             frames=create_animation_roll(
                 {
@@ -626,6 +695,19 @@ class SpriteManager:
         )
         return [item]
 
+    def create_buff(self, position, target, cost=0, index=None):
+        if index is None:
+            index = self._last_index
+        self.indices = cycle(ALLOWED_BUFFS)
+        buff = Buff.create_from_sprite(
+            index=next(self.indices) if index is None else index,
+            groups=[self.layers],
+            position=position,
+            target=target,
+            cost=cost,
+        )
+        return buff
+
     def create_player(self, position=(800, 500)):
         player = Player.create_from_sprite(
             index="edwardo",
@@ -636,8 +718,9 @@ class SpriteManager:
         return player
 
     def create_enemy(self, position, orientation=None, index=None):
-        base_index = index.split("_")[0].lower()
-        if index is None:
+        if index:
+            base_index = index.split("_")[0].lower()
+        else:
             index = self._last_index
         if orientation is None:
             orientation = self._last_orientation

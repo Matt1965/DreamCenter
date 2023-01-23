@@ -175,14 +175,14 @@ def create_background_tile_map(raw_tile_map):
     return background_tiles
 
 
-def save_level(tile_map, shrubs, enemies, file_obj=None, return_directly=False):
+def save_level(tile_map, shrubs, enemies, traps, buffs, items, file_obj=None, return_directly=False):
     """
     Saves `tile_map` and `shrubs` to file_obj. No other sprite types (turrets, etc.) are saved.
     """
     output_map = create_tile_map()
     # This is the default format for the file. If you change it, you
     # must ensure the loader is suitably updated also.
-    data = {"background": None, "shrub": None, "enemies": None}
+    data = {"background": None, "shrub": None, "enemies": None, "traps": None, "buffs": None, "items": None}
     for (y, x, _, _) in tile_positions():
         bg_tile = tile_map[y][x]
         assert isinstance(
@@ -192,6 +192,9 @@ def save_level(tile_map, shrubs, enemies, file_obj=None, return_directly=False):
     data["background"] = output_map
     output_shrubs = []
     output_enemies = []
+    output_buffs = []
+    output_traps = []
+    output_items = []
     for shrub in shrubs:
         output_shrubs.append(
             {
@@ -210,6 +213,31 @@ def save_level(tile_map, shrubs, enemies, file_obj=None, return_directly=False):
             }
         )
     data["enemies"] = output_enemies
+    for buff in buffs:
+        output_buffs.append(
+            {
+                "index": buff.index,
+                "position": buff.rect.center,
+            }
+        )
+    data["buffs"] = output_buffs
+    for trap in traps:
+        output_buffs.append(
+            {
+                "index": trap.index,
+                "orientation": trap.orientation,
+                "position": trap.rect.center,
+            }
+        )
+    data["traps"] = output_traps
+    for item in items:
+        output_buffs.append(
+            {
+                "index": item.index,
+                "position": item.rect.center,
+            }
+        )
+    data["items"] = output_items
     if return_directly:
         return data
     file_obj.write(json.dumps(data))

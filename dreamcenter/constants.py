@@ -50,6 +50,13 @@ SPRITES = {
     "map_you_are_here": "map_you_are_here.png",
     "money": "money_000.png",
     "text": "blank.png",
+    "buff_accumen": "buff_accumen.png",
+    "buff_corpus": "buff_corpus.png",
+    "buff_intuitus": "buff_intuitus.png",
+    "buff_nova": "buff_nova.png",
+    "buff_pax": "buff_pax.png",
+    "stapler": "stapler.png",
+    "grey_brick": "grey_brick.png",
 }
 
 ANIMATIONS = {
@@ -76,10 +83,19 @@ ALLOWED_BG = [
     "blank",
     "black",
     "wood_door",
+    "grey_brick",
 ]
 
 ALLOWED_ENEMY = [
     "skeleton",
+]
+
+ALLOWED_BUFFS = [
+    "buff_accumen",
+    "buff_corpus",
+    "buff_intuitus",
+    "buff_nova",
+    "buff_pax",
 ]
 
 WALLS = [
@@ -100,6 +116,7 @@ TILE_MAPS = {
     "bricks1": ((0, 0), (0, 0)),
     "bricks2": ((0, 0), (0, 0)),
     "bricks3": ((0, 0), (0, 0)),
+    "grey_brick": ((1, 1), (1, 1)),
     "bloody_floor": ((1, 1), (1, 1)),
     "blank": ((1, 1), (1, 1)),
     "black": ((0, 0), (0, 0)),
@@ -160,6 +177,3 @@ ITEM_STATS = {
         "anim_stop": ANIMATIONS["money_stopped"],
     }
 }
-
-
-

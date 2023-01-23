@@ -1,5 +1,6 @@
 import pygame as pg
 import tkinter
+from tkinter import filedialog
 from contextlib import contextmanager
 from math import atan2, degrees, pi
 from dreamcenter.constants import (
@@ -160,6 +161,7 @@ def open_dialog(title="Open file...", filetypes=(("Tower Defense Levels", "*json
     None if the user exits it without selecting. If there is a file it
     is closed when the context manager exits.
     """
+    f = None
     try:
         f = tkinter.filedialog.askopenfile(title=title, filetypes=filetypes)
         yield f

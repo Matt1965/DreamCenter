@@ -126,7 +126,12 @@ class GamePlaying(GameLoop):
         if self.map_manager.map_grid[self.level_position[0]][self.level_position[1]]["saved_state"]:
             data = self.map_manager.map_grid[self.level_position[0]][self.level_position[1]]["saved_state"]
             self.load_level(
-                background=data["background"], shrubs=data["shrubs"], enemies=data["enemies"]
+                background=data["background"],
+                shrubs=data["shrubs"],
+                enemies=data["enemies"],
+                traps=data["traps"],
+                buffs=data["buffs"],
+                items=data["items"],
             )
         else:
             level = self.map_manager.map_grid[self.level_position[0]][self.level_position[1]]["level"]
@@ -154,6 +159,9 @@ class GamePlaying(GameLoop):
                 self.level,
                 self.layers.get_sprites_from_layer(Layer.shrub.value),
                 self.layers.get_sprites_from_layer(Layer.enemy.value),
+                self.layers.get_sprites_from_layer(Layer.trap.value),
+                self.layers.get_sprites_from_layer(Layer.buff.value),
+                self.layers.get_sprites_from_layer(Layer.item.value),
                 return_directly=True,
             )
         self.determine_level()
@@ -161,10 +169,15 @@ class GamePlaying(GameLoop):
     def open_level(self, file_obj):
         data = json.loads(file_obj.read())
         self.load_level(
-            background=data["background"], shrubs=data["shrubs"], enemies=data["enemies"]
+            background=data["background"],
+            shrubs=data["shrubs"],
+            enemies=data["enemies"],
+            traps=data["traps"],
+            buffs=data["buffs"],
+            items=data["items"],
         )
 
-    def load_level(self, background, shrubs, enemies):
+    def load_level(self, background, shrubs, enemies, traps, buffs, items):
         """
         Given a valid tile map of `background` tiles, and a list
         of `shrubs`, load them into the game and reset the game.
@@ -190,6 +203,33 @@ class GamePlaying(GameLoop):
                 )
             )
             self.sprite_manager.place(enemy["position"])
+        for buff in buffs:
+            self.sprite_manager.select_sprites(
+                self.sprite_manager.create_buff(
+                    position=buff["position"],
+                    target=self.player_group.player,
+                    index=buff["index"],
+                )
+            )
+            self.sprite_manager.place(buff["position"])
+        for trap in traps:
+            self.sprite_manager.select_sprites(
+                self.sprite_manager.create_trap(
+                    position=trap["position"],
+                    orientation=trap["orientation"],
+                    index=trap["index"],
+                )
+            )
+            self.sprite_manager.place(trap["position"])
+        for item in items:
+            self.sprite_manager.select_sprites(
+                self.sprite_manager.create_item(
+                    position=item["position"],
+                    index=item["index"],
+                    target=self.player_group.player,
+                )
+            )
+            self.sprite_manager.place(item["position"])
         if self.pathfinding_grid:
             Grid.cleanup(self.pathfinding_grid)
         if self.enemy_group.obstacles:
@@ -399,6 +439,13 @@ class GamePlaying(GameLoop):
             for item in items:
                 item.action()
                 item.kill()
+
+        buffs = self.layers.get_sprites_from_layer(Layer.buff)
+        player = self.layers.get_sprites_from_layer(Layer.player)
+        for player, buffs in collide_mask(player, buffs):
+            for buff in buffs:
+                buff.action()
+                buff.kill()
 
     def game_over_check(self):
         if self.player_group.player.health <= 0:
