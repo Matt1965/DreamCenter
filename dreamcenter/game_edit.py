@@ -220,5 +220,8 @@ class GameEditing(GameLoop):
                     self.level,
                     self.layers.get_sprites_from_layer(Layer.shrub.value),
                     self.layers.get_sprites_from_layer(Layer.enemy.value),
+                    self.layers.get_sprites_from_layer(Layer.trap.value),
+                    self.layers.get_sprites_from_layer(Layer.buff.value),
+                    self.layers.get_sprites_from_layer(Layer.item.value),
                     save_file,
                 )

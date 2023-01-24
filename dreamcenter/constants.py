@@ -57,6 +57,7 @@ SPRITES = {
     "buff_pax": "buff_pax.png",
     "stapler": "stapler.png",
     "grey_brick": "grey_brick.png",
+    "painting": "painting.png",
 }
 
 ANIMATIONS = {
@@ -88,6 +89,10 @@ ALLOWED_BG = [
 
 ALLOWED_ENEMY = [
     "skeleton",
+]
+
+ALLOWED_SHRUB = [
+    "painting",
 ]
 
 ALLOWED_BUFFS = [

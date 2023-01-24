@@ -22,6 +22,7 @@ from dreamcenter.constants import (
     ENEMY_STATS,
     ITEM_STATS,
     ALLOWED_BUFFS,
+    ALLOWED_SHRUB,
 )
 
 
@@ -521,6 +522,7 @@ class Player(Sprite):
     def __init__(
         self,
         cooldown=20,
+        max_health=8,
         health=8,
         damage=25,
         cooldown_remaining=0,
@@ -534,6 +536,7 @@ class Player(Sprite):
     ):
         super().__init__(**kwargs)
         self.state = state
+        self.max_health = max_health
         self.health = health
         self.damage = damage
         self.cooldown = cooldown
@@ -620,11 +623,11 @@ class SpriteManager:
     _last_orientation: int = field(init=False, default=0)
 
     def create_background(self, position, orientation=None, index=None):
+        self.indices = cycle(ALLOWED_BG)
         if index is None:
             index = self._last_index
         if orientation is None:
             orientation = self._last_orientation
-        self.indices = cycle(ALLOWED_BG)
         background = Background.create_from_sprite(
             sounds=None,
             groups=[self.layers],
@@ -720,13 +723,17 @@ class SpriteManager:
         return player
 
     def create_enemy(self, position, orientation=None, index=None):
-        if index:
-            base_index = index.split("_")[0].lower()
-        else:
+        self.indices = cycle(ALLOWED_ENEMY)
+        if not index:
             index = self._last_index
+            if not index:
+                base_index = next(self.indices)
+            else:
+                base_index = index
+        else:
+            base_index = index.split("_")[0].lower()
         if orientation is None:
             orientation = self._last_orientation
-        self.indices = cycle(ALLOWED_ENEMY)
         enemy = Enemy.create_from_sprite(
             index=next(self.indices) if index is None else index,
             groups=[self.layers],
@@ -759,6 +766,13 @@ class SpriteManager:
         Factory that creates a shrub sprite at a given `position`,
         with optional `index` and `orientation`.
         """
+        self.indices = cycle(ALLOWED_SHRUB)
+        if not index:
+            index = next(self.indices)
+        else:
+            base_index = index.split("_")[0].lower()
+        if orientation is None:
+            orientation = self._last_orientation
         shrub = Shrub.create_from_sprite(
             sounds=None,
             groups=[self.layers],
