@@ -58,6 +58,8 @@ SPRITES = {
     "stapler": "stapler.png",
     "grey_brick": "grey_brick.png",
     "painting": "painting.png",
+    "painting2": "painting2.png",
+    "spider": "spider_stopped_000.png",
 }
 
 ANIMATIONS = {
@@ -66,6 +68,9 @@ ANIMATIONS = {
     "skeleton_walk": ["Skeleton_Walk_{:003}".format(frame) for frame in range(1, 3 + 1)],
     "skeleton_death": ["Skeleton_Death_{:003}".format(frame) for frame in range(1, 3 + 1)],
     "skeleton_stopped": ["Skeleton_Stopped_{:003}".format(frame) for frame in range(1, 3 + 1)],
+    "spider_walk": ["spider_walk_{:003}".format(frame) for frame in range(1, 2 + 1)],
+    "spider_death": ["spider_death_{:003}".format(frame) for frame in range(1, 3 + 1)],
+    "spider_stopped": ["spider_stopped_{:003}".format(frame) for frame in range(1, 3 + 1)],
 }
 
 for animation in chain.from_iterable(ANIMATIONS.values()):
@@ -89,10 +94,12 @@ ALLOWED_BG = [
 
 ALLOWED_ENEMY = [
     "skeleton",
+    "spider",
 ]
 
 ALLOWED_SHRUB = [
     "painting",
+    "painting2",
 ]
 
 ALLOWED_BUFFS = [
@@ -174,7 +181,17 @@ ENEMY_STATS = {
         "anim_dying": ANIMATIONS["skeleton_death"],
         "anim_walk": ANIMATIONS["skeleton_walk"],
         "anim_stop": ANIMATIONS["skeleton_stopped"],
-    }
+    },
+    "spider": {
+        "value": 2,
+        "health": 10,
+        "aggro_distance": 300,
+        "speed": 3,
+        "collision_damage": 1,
+        "anim_dying": ANIMATIONS["spider_death"],
+        "anim_walk": ANIMATIONS["spider_walk"],
+        "anim_stop": ANIMATIONS["spider_stopped"],
+    },
 }
 
 ITEM_STATS = {

@@ -877,8 +877,7 @@ class SpriteManager:
             return
         new_index = next(self.indices)
         for sprite in self.sprites:
-            if sprite.layer in (Layer.background, Layer.wall, Layer.trap, Layer.door):
-                sprite.set_sprite_index(new_index)
+            sprite.set_sprite_index(new_index)
         self._last_index = new_index
 
     def update(self):

@@ -106,7 +106,6 @@ class GameEditing(GameLoop):
 
     def draw(self):
         self.screen.blit(self.background, (0, 0))
-        self.layers.update()
         self.layers.draw(self.screen)
 
     def loop(self):
@@ -141,7 +140,7 @@ class GameEditing(GameLoop):
             elif mouse[1]:
                 self.sprite_manager.kill()
         else:
-            if mouse[1]:
+            if mouse[1] :
                 found_sprites = self.layers.get_sprites_at(self.mouse_position)
                 for found_sprite in found_sprites:
                     if found_sprite.layer != Layer.background:
