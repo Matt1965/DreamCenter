@@ -11,6 +11,7 @@ from dreamcenter.constants import (
     KEY_BACKGROUND,
     KEY_SHRUB,
     KEY_ENEMY,
+    KEY_BUFF,
     WALLS,
     DOORS,
 )
@@ -206,6 +207,11 @@ class GameEditing(GameLoop):
         if index == KEY_ENEMY:
             self.sprite_manager.select_sprites(
                 self.sprite_manager.create_enemy(position=self.mouse_position),
+                self.mouse_position,
+            )
+        if index == KEY_BUFF:
+            self.sprite_manager.select_sprites(
+                self.sprite_manager.create_buff(position=self.mouse_position),
                 self.mouse_position,
             )
 

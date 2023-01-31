@@ -1,4 +1,3 @@
-import enum
 import math
 import pygame as pg
 import operator
@@ -24,49 +23,12 @@ from dreamcenter.constants import (
     ALLOWED_BUFFS,
     ALLOWED_SHRUB,
 )
-
-
-class AnimationState(enum.Enum):
-    """
-    Possible animation states
-    """
-    stopped = "stopped"
-    walking = "walking"
-    dying = "dying"
-    exploding = "exploding"
-
-    @classmethod
-    def state_kills_sprite(cls, state):
-        """
-        Returns true when in a state that should kill sprite upon completion
-        """
-        return state in (cls.exploding, cls.dying)
-
-
-class SpriteState(enum.Enum):
-
-    """
-    Possible states for movable sprites (like enemies)
-    """
-    unknown = "unknown"
-    moving = "moving"
-    stopped = "stopped"
-
-
-class Layer(enum.IntEnum):
-
-    background = 0
-    wall = 20
-    door = 30
-    enemy = 40
-    shrub = 50
-    trap = 60
-    item = 65
-    player = 70
-    health = 80
-    buff = 85
-    projectile = 90
-    text = 100
+from dreamcenter.enumeration import (
+    AnimationState,
+    SpriteState,
+    MovementType,
+    Layer,
+)
 
 
 class Sprite(pg.sprite.Sprite):
@@ -247,12 +209,21 @@ class DirectedSprite(Sprite):
     Subclass of `Sprite` that understands basic motion and rotation.
     """
 
-    def __init__(self, path=None, state=SpriteState.unknown, waiting=False, speed=3, **kwargs):
+    def __init__(
+            self,
+            path=None,
+            state=SpriteState.unknown,
+            waiting=False,
+            previous_position=[0, 0],
+            speed=3,
+            **kwargs
+    ):
         super().__init__(**kwargs)
         self.state = state
         self.path = path
         self.speed = speed
         self.waiting = waiting
+        self.previous_position = previous_position
 
     def update(self):
         try:
@@ -261,7 +232,9 @@ class DirectedSprite(Sprite):
             if self.path is not None:
                 self.state = SpriteState.moving
                 if not self.waiting:
+                    self.previous_position = self.position
                     position, angle = next(self.path)
+                    self.position = position
                     self.move(position)
                     self.rotate(angle + next(self.angle))
             self.play()
@@ -492,7 +465,10 @@ class Enemy(DirectedSprite):
         aggro_distance=500,
         collision_damage=1,
         value=1,
-        currently_pathfinding=False,
+        destination=[0, 0],
+        movement=MovementType.chase,
+        movement_cooldown=0,
+        movement_cooldown_remaining=0,
         **kwargs
     ):
         # Tracks the offset, if any, if the image is flipped
@@ -503,13 +479,18 @@ class Enemy(DirectedSprite):
         self.aggro_distance = aggro_distance
         self.collision_damage = collision_damage
         self.value = value
-        self.currently_pathfinding = currently_pathfinding
+        self.destination = destination
+        self.movement = movement
+        self.movement_cooldown = movement_cooldown
+        self.movement_cooldown_remaining = movement_cooldown_remaining
         super().__init__(**kwargs)
 
     def update(self):
         super().update()
         if self.cooldown_remaining > 0:
             self.cooldown_remaining -= 1
+        if not self.path and self.movement_cooldown_remaining > 0:
+            self.movement_cooldown_remaining -= 1
         if not self.path and self.animation_state != AnimationState.dying:
             self.animation_state = AnimationState.stopped
             self.currently_pathfinding = False
@@ -700,12 +681,10 @@ class SpriteManager:
         )
         return [item]
 
-    def create_buff(self, position, target, cost=0, index=None):
-        if index is None:
-            index = self._last_index
-        self.indices = cycle(ALLOWED_BUFFS)
+    def create_buff(self, position, target=None, cost=0, index=None):
+        self.indices = None
         buff = Buff.create_from_sprite(
-            index=next(self.indices) if index is None else index,
+            index="random" if index is None else index,
             groups=[self.layers],
             position=position,
             target=target,
@@ -745,6 +724,8 @@ class SpriteManager:
             speed=ENEMY_STATS[base_index]["speed"],
             collision_damage=ENEMY_STATS[base_index]["collision_damage"],
             aggro_distance=ENEMY_STATS[base_index]["aggro_distance"],
+            movement=ENEMY_STATS[base_index]["movement"],
+            movement_cooldown=ENEMY_STATS[base_index]["movement_cooldown"],
             frames=create_animation_roll(
                 {
                     AnimationState.dying: extend(

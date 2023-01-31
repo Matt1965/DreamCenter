@@ -3,8 +3,9 @@ from dataclasses import dataclass, field
 from typing import List
 from pygame import Vector2 as Vector
 from itertools import repeat
-from dreamcenter.sprites import SpriteManager, AnimationState
+from dreamcenter.sprites import SpriteManager
 from dreamcenter.helpers import get_line
+from dreamcenter.enumeration import AnimationState, MovementType
 from dreamcenter.path_finding import find_path, convert_path
 
 
@@ -21,15 +22,28 @@ class EnemyGroup:
 
     def update(self):
         for enemy in self.enemies:
+            self.handle_movement(enemy)
+            self.handle_death(enemy)
+
+    def handle_movement(self, enemy):
+        if enemy.movement in (MovementType.wander, MovementType.wander_chase):
+            if enemy.movement_cooldown_remaining == 0:
+                enemy.random_movement(enemy.speed * 10)
+                if enemy.animation_state is not AnimationState.walking:
+                    enemy.animation_state = AnimationState.walking
+                enemy.movement_cooldown_remaining = enemy.movement_cooldown
+        if enemy.movement in (MovementType.wander_chase, MovementType.chase, MovementType.ranged_chase):
             if self.in_sight(enemy, self.player):
                 enemy.direct_movement(self.player.rect.center)
                 if enemy.animation_state is not AnimationState.walking:
                     enemy.animation_state = AnimationState.walking
-            if enemy.health <= 0:
-                enemy.path = None
-                self.handle_drops(enemy)
-                enemy.animation_state = AnimationState.dying
-                self.enemies.remove(enemy)
+
+    def handle_death(self, enemy):
+        if enemy.health <= 0:
+            enemy.path = None
+            self.handle_drops(enemy)
+            enemy.animation_state = AnimationState.dying
+            self.enemies.remove(enemy)
 
     def in_sight(self, enemy, target):
         line_of_sight = get_line(enemy.rect.center, target.rect.center)

@@ -1,4 +1,5 @@
 import pygame as pg
+import random
 from pygame import Vector2 as Vector
 import json
 from pathfinding.core.grid import Grid
@@ -13,6 +14,7 @@ from dreamcenter.text_group import TextGroup
 from dreamcenter.game_state import GameState
 from dreamcenter.game import GameLoop
 from dreamcenter.game import save_level, create_background_tile_map
+from dreamcenter.sprites import SpriteManager
 from dreamcenter.constants import (
     DESIRED_FPS,
     IMAGE_SPRITES,
@@ -29,10 +31,10 @@ from dreamcenter.helpers import (
     create_tile_map,
     collide_mask,
 )
-from dreamcenter.sprites import (
+from dreamcenter.enumeration import (
     Layer,
-    SpriteManager,
     AnimationState,
+    MovementType,
 )
 
 
@@ -208,7 +210,7 @@ class GamePlaying(GameLoop):
                 self.sprite_manager.create_buff(
                     position=buff["position"],
                     target=self.player_group.player,
-                    index=buff["index"],
+                    index=random.choice(ALLOWED_BUFFS) if buff["index"] is "random" else buff["index"],
                 )
             )
             self.sprite_manager.place(buff["position"])
@@ -306,6 +308,7 @@ class GamePlaying(GameLoop):
             self.game_over_check()
             pg.display.flip()
             clock.tick(DESIRED_FPS)
+            pg.display.set_caption(f"FPS {round(clock.get_fps())}")
             loop_counter += 1
         self.layers.empty()
 
@@ -349,7 +352,7 @@ class GamePlaying(GameLoop):
 
         walls = self.layers.get_sprites_from_layer(Layer.wall)
         projectiles = self.layers.get_sprites_from_layer(Layer.projectile)
-        for walls, projectiles in collide_mask(walls, projectiles, pg.sprite.collide_circle_ratio(.5)):
+        for walls, projectiles in collide_mask(walls, projectiles, pg.sprite.collide_circle_ratio(.45)):
             for projectile in projectiles:
                 projectile.animation_state = AnimationState.exploding
 
@@ -382,17 +385,20 @@ class GamePlaying(GameLoop):
             for enemy in [enemies]:
                 if enemy.path is None:
                     continue
-                if enemy.currently_pathfinding:
-                    continue
-                enemy.path = self.enemy_group.find_pathfinding_path(
-                    enemy.rect.center,
-                    self.player_group.player.rect.center,
-                    self.pathfinding_grid,
-                    enemy.speed
-                )
-                enemy.currently_pathfinding = True
-                enemy.animation_state = AnimationState.walking
-                enemy.final_position = self.player_group.player.rect.center
+                if enemy.movement in (MovementType.chase, MovementType.ranged_chase):
+                    enemy.path = self.enemy_group.find_pathfinding_path(
+                        enemy.rect.center,
+                        self.player_group.player.rect.center,
+                        self.pathfinding_grid,
+                        enemy.speed,
+                    )
+                    enemy.animation_state = AnimationState.walking
+                    enemy.final_position = self.player_group.player.rect.center
+                if enemy.movement in (MovementType.wander_chase, MovementType.wander):
+                    enemy.path = None
+                    enemy.move(enemy.previous_position)
+                    enemy.movement_cooldown_remaining = 0
+
 
         enemies = self.layers.get_sprites_from_layer(Layer.enemy)
         player = self.layers.get_sprites_from_layer(Layer.player)

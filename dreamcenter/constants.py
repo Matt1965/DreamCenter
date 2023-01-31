@@ -1,6 +1,7 @@
 import pygame as pg
 from typing import Dict, Tuple
 from itertools import chain
+from dreamcenter.enumeration import MovementType
 
 DESIRED_FPS = 60
 
@@ -30,6 +31,7 @@ SPRITES = {
     "bricks1": "bricks1.png",
     "bricks2": "bricks2.png",
     "bricks3": "bricks3.png",
+    "bricks4": "bricks4.png",
     "bloody_floor": "bloody_floor.png",
     "projectile": "projectile.png",
     "skeleton": "Skeleton_Walk_000.png",
@@ -60,6 +62,7 @@ SPRITES = {
     "painting": "painting.png",
     "painting2": "painting2.png",
     "spider": "spider_stopped_000.png",
+    "random": "random.png",
 }
 
 ANIMATIONS = {
@@ -85,6 +88,7 @@ ALLOWED_BG = [
     "bricks1",
     "bricks2",
     "bricks3",
+    "bricks4",
     "bloody_floor",
     "blank",
     "black",
@@ -114,6 +118,7 @@ WALLS = [
     "bricks1",
     "bricks2",
     "bricks3",
+    "bricks4",
     "black",
 ]
 
@@ -128,6 +133,7 @@ TILE_MAPS = {
     "bricks1": ((0, 0), (0, 0)),
     "bricks2": ((0, 0), (0, 0)),
     "bricks3": ((0, 0), (0, 0)),
+    "bricks4": ((0, 0), (0, 0)),
     "grey_brick": ((1, 1), (1, 1)),
     "bloody_floor": ((1, 1), (1, 1)),
     "blank": ((1, 1), (1, 1)),
@@ -140,6 +146,7 @@ SOUNDS = {}
 KEY_ENEMY = 0
 KEY_BACKGROUND = 1
 KEY_SHRUB = 2
+KEY_BUFF = 3
 
 CACHE = {}
 
@@ -166,6 +173,13 @@ LEVEL_CONNECTIONS = {
     "left_right": (0, 1, 0, 1),
 }
 
+SHOP_CONNECTIONS = {
+    "up_shop": (1, 0, 0, 0),
+    "down_shop": (0, 0, 1, 0),
+    "left_shop": (0, 0, 0, 1),
+    "right_shop": (0, 1, 0, 0),
+}
+
 CONNECTION_MATCH = {}
 
 MAP_GRID_UPPER_MAX = 40
@@ -181,16 +195,20 @@ ENEMY_STATS = {
         "anim_dying": ANIMATIONS["skeleton_death"],
         "anim_walk": ANIMATIONS["skeleton_walk"],
         "anim_stop": ANIMATIONS["skeleton_stopped"],
+        "movement": MovementType.chase,
+        "movement_cooldown": 0,
     },
     "spider": {
         "value": 2,
         "health": 10,
         "aggro_distance": 300,
-        "speed": 3,
+        "speed": 3.5,
         "collision_damage": 1,
         "anim_dying": ANIMATIONS["spider_death"],
         "anim_walk": ANIMATIONS["spider_walk"],
         "anim_stop": ANIMATIONS["spider_stopped"],
+        "movement": MovementType.wander_chase,
+        "movement_cooldown": 70,
     },
 }
 
