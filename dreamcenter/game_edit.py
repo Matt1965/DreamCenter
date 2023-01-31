@@ -55,7 +55,7 @@ class GameEditing(GameLoop):
     def create_blank_level(self):
         self.load_level(create_tile_map({"index": "blank", "orientation": 0}), [], [])
 
-    def load_level(self, background, shrubs, enemies):
+    def load_level(self, background, shrubs, enemies, buffs, traps):
         """
         Given a valid tile map of `background` tiles, and a list
         of `shrubs`, load them into the game and reset the game.
@@ -81,6 +81,24 @@ class GameEditing(GameLoop):
                 )
             )
             self.sprite_manager.place(enemy["position"])
+        for buff in buffs:
+            self.sprite_manager.select_sprites(
+                self.sprite_manager.create_buff(
+                    position=buff["position"],
+                    target=None,
+                    index="random",
+                )
+            )
+            self.sprite_manager.place(buff["position"])
+        for trap in traps:
+            self.sprite_manager.select_sprites(
+                self.sprite_manager.create_trap(
+                    position=trap["position"],
+                    orientation=trap["orientation"],
+                    index=trap["index"],
+                )
+            )
+            self.sprite_manager.place(trap["position"])
 
     def draw_background(self):
         self.background.blit(IMAGE_SPRITES[(False, False, "edit_background")], (0, 0))
@@ -176,7 +194,11 @@ class GameEditing(GameLoop):
     def open_level(self, file_obj):
         data = json.loads(file_obj.read())
         self.load_level(
-            background=data["background"], shrubs=data["shrubs"], enemies=data["enemies"]
+            background=data["background"],
+            shrubs=data["shrubs"],
+            enemies=data["enemies"],
+            traps=data["traps"],
+            buffs=data["buffs"],
         )
 
     def select_sprite(self, index: Optional[int]):

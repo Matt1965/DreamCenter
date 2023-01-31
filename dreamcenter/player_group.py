@@ -28,7 +28,12 @@ class PlayerGroup:
 
     def fire_projectile(self):
         if self.player.cooldown_remaining == 0 and self.firing is True:
-            self.sprite_manager.create_projectile(self.player.position, pg.mouse.get_pos(), damage=self.player.damage)
+            self.sprite_manager.create_projectile(
+                self.player.position,
+                pg.mouse.get_pos(),
+                damage=self.player.damage,
+                max_distance=self.player.range
+            )
             self.player.cooldown_remaining = self.player.cooldown
 
     def update(self):

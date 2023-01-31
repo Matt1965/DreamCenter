@@ -24,6 +24,7 @@ from dreamcenter.constants import (
     DOORS,
     CONNECTION_MATCH,
     LEVEL_CONNECTIONS,
+    ALLOWED_BUFFS,
 )
 from dreamcenter.helpers import (
     create_surface,
@@ -210,7 +211,7 @@ class GamePlaying(GameLoop):
                 self.sprite_manager.create_buff(
                     position=buff["position"],
                     target=self.player_group.player,
-                    index=random.choice(ALLOWED_BUFFS) if buff["index"] is "random" else buff["index"],
+                    index=random.choice(ALLOWED_BUFFS) if buff["index"] == "random" else buff["index"],
                 )
             )
             self.sprite_manager.place(buff["position"])
@@ -270,7 +271,7 @@ class GamePlaying(GameLoop):
             for tile in row:
                 if tile["level"] == "blank":
                     continue
-                connection = LEVEL_CONNECTIONS[tile["level"]]
+                connection = LEVEL_CONNECTIONS[tile["level"]]["connection"]
                 self.map_display.blit(
                     CONNECTION_MATCH[connection],
                     (
@@ -450,8 +451,10 @@ class GamePlaying(GameLoop):
         player = self.layers.get_sprites_from_layer(Layer.player)
         for player, buffs in collide_mask(player, buffs):
             for buff in buffs:
-                buff.action()
-                buff.kill()
+                if self.player_group.player.money >= buff.cost:
+                    buff.action()
+                    buff.kill()
+                    self.player_group.player.money -= buff.cost
 
     def game_over_check(self):
         if self.player_group.player.health <= 0:

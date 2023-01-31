@@ -156,28 +156,25 @@ CACHE = {}
 0 = no door
 """
 LEVEL_CONNECTIONS = {
-    "4_way": (1, 1, 1, 1),
-    "3_way_no_down": (1, 1, 0, 1),
-    "3_way_no_up": (0, 1, 1, 1),
-    "3_way_no_left": (1, 1, 1, 0),
-    "3_way_no_right": (1, 0, 1, 1),
-    "down_dead": (0, 0, 1, 0),
-    "up_dead": (1, 0, 0, 0),
-    "left_dead": (0, 0, 0, 1),
-    "right_dead": (0, 1, 0, 0),
-    "down_left": (0, 0, 1, 1),
-    "down_right": (0, 1, 1, 0),
-    "up_left": (1, 0, 0, 1),
-    "up_right": (1, 1, 0, 0),
-    "up_down": (1, 0, 1, 0),
-    "left_right": (0, 1, 0, 1),
-}
-
-SHOP_CONNECTIONS = {
-    "up_shop": (1, 0, 0, 0),
-    "down_shop": (0, 0, 1, 0),
-    "left_shop": (0, 0, 0, 1),
-    "right_shop": (0, 1, 0, 0),
+    "4_way": {"connection": (1, 1, 1, 1), "type": "basic"},
+    "3_way_no_down": {"connection": (1, 1, 0, 1), "type": "basic"},
+    "3_way_no_up": {"connection": (0, 1, 1, 1), "type": "basic"},
+    "3_way_no_left": {"connection": (1, 1, 1, 0), "type": "basic"},
+    "3_way_no_right": {"connection": (1, 0, 1, 1), "type": "basic"},
+    "down_dead": {"connection": (0, 0, 1, 0), "type": "basic"},
+    "up_dead": {"connection": (1, 0, 0, 0), "type": "basic"},
+    "left_dead": {"connection": (0, 0, 0, 1), "type": "basic"},
+    "right_dead": {"connection": (0, 1, 0, 0), "type": "basic"},
+    "down_left": {"connection": (0, 0, 1, 1), "type": "basic"},
+    "down_right": {"connection": (0, 1, 1, 0), "type": "basic"},
+    "up_left": {"connection": (1, 0, 0, 1), "type": "basic"},
+    "up_right": {"connection": (1, 1, 0, 0), "type": "basic"},
+    "up_down": {"connection": (1, 0, 1, 0), "type": "basic"},
+    "left_right": {"connection": (0, 1, 0, 1), "type": "basic"},
+    "up_shop": {"connection": (1, 0, 0, 0), "type": "shop"},
+    "down_shop": {"connection": (0, 0, 1, 0), "type": "shop"},
+    "left_shop": {"connection": (0, 0, 0, 1), "type": "shop"},
+    "right_shop": {"connection": (0, 1, 0, 0), "type": "shop"},
 }
 
 CONNECTION_MATCH = {}

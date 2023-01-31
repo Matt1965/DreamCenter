@@ -417,8 +417,8 @@ class Buff(DirectedSprite):
         match self.index:
             case "buff_nova":
                 self.action = self.action_nova
-            case "buff_acumen":
-                self.action = self.action_acumen
+            case "buff_accumen":
+                self.action = self.action_accumen
             case "buff_intuitus":
                 self.action = self.action_intuitus
             case "buff_pax":
@@ -432,7 +432,7 @@ class Buff(DirectedSprite):
         self.target.damage += 1
         self.target.cooldown += 1
 
-    def action_acumen(self):
+    def action_accumen(self):
         self.target.cooldown -= 1
         self.target.range -= 1
 
@@ -509,6 +509,7 @@ class Player(Sprite):
         cooldown_remaining=0,
         position=[800, 500],
         speed=8,
+        range=300,
         state=SpriteState.unknown,
         invulnerable_remaining=0,
         invulnerable_cooldown=40,
@@ -523,6 +524,7 @@ class Player(Sprite):
         self.cooldown = cooldown
         self.position = position
         self.speed = speed
+        self.range = range
         self.cooldown_remaining = cooldown_remaining
         self.invulnerable_remaining = invulnerable_remaining
         self.invulnerable_cooldown = invulnerable_cooldown
@@ -681,7 +683,7 @@ class SpriteManager:
         )
         return [item]
 
-    def create_buff(self, position, target=None, cost=0, index=None):
+    def create_buff(self, position, target=None, cost=5, index=None):
         self.indices = None
         buff = Buff.create_from_sprite(
             index="random" if index is None else index,

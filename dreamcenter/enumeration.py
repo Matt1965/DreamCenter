@@ -46,8 +46,8 @@ class Layer(enum.IntEnum):
     shrub = 50
     trap = 60
     item = 65
+    buff = 68
     player = 70
     health = 80
-    buff = 85
     projectile = 90
     text = 100

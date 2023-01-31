@@ -5,7 +5,8 @@ from dreamcenter.constants import LEVEL_CONNECTIONS, MAP_GRID_UPPER_MAX
 
 @dataclass
 class Map:
-    seed_amt: int = field(default=15)
+    end_points: list = field(default_factory=list)
+    seed_amt: int = field(default=5)
     map_grid: list[list[dict]] = field(default_factory=list)
 
     def __post_init__(self):
@@ -88,7 +89,7 @@ class Map:
     def level_matcher(connections):
         matched_levels = []
         for key, value in LEVEL_CONNECTIONS.items():
-            if connections == value:
+            if connections == value["connection"]:
                 matched_levels.append(key)
         return matched_levels
 
@@ -106,6 +107,9 @@ class Map:
                         tile["level"] = random.choice(levels_matched)
                         tile["growth"] = 0
                         growing = True
+        self.identify_end_points()
+        self.assign_shop()
+
 
     def visualize_map(self):
         visualized_map = []
@@ -118,3 +122,24 @@ class Map:
                     level_count += 1
             visualized_map.append(temp_row)
         return visualized_map
+
+    def identify_end_points(self):
+        for row in self.map_grid:
+            for tile in row:
+                try:
+                    if sum(LEVEL_CONNECTIONS[tile["level"]]["connection"]) == 1:
+                        self.end_points.append(tile["position"])
+                except KeyError:
+                    pass
+
+    def assign_shop(self):
+        grid_pos = random.choice(self.end_points)
+        self.end_points.remove(grid_pos)
+        shop_pool = []
+        for shop in LEVEL_CONNECTIONS:
+            if LEVEL_CONNECTIONS[shop]["type"] != "shop":
+                continue
+            if LEVEL_CONNECTIONS[shop]["connection"] == \
+                    LEVEL_CONNECTIONS[self.map_grid[grid_pos[0]][grid_pos[1]]["level"]]["connection"]:
+                shop_pool.append(shop)
+        self.map_grid[grid_pos[0]][grid_pos[1]]["level"] = random.choice(shop_pool)
