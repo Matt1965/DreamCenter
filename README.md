@@ -1,3 +1,5 @@
+*** Packaging currently not working ***
+
 # Installation
 
 Dreamcenter uses conda for environment management.
