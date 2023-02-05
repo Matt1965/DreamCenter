@@ -18,8 +18,11 @@ FONT_SIZE = 20
 
 SCREENRECT = pg.Rect(0, 0, TILE_WIDTH * TILES_X, TILE_HEIGHT * TILES_Y)
 
+# identifiers for clarity in event handling
 MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT = 1, 2, 3
 
+# Dict of all game images
+# Animation images added separately
 SPRITES = {
     "edwardo": "edwardo.png",
     "edwardowithgun": "edwardowithgun.png",
@@ -65,6 +68,7 @@ SPRITES = {
     "random": "random.png",
 }
 
+# Animation dicts
 ANIMATIONS = {
     "projectile_explode": ["projectile_{:003}".format(frame) for frame in range(1, 3 + 1)],
     "money_stopped": ["Money_{:003}".format(frame) for frame in range(1, 4 + 1)],
@@ -76,6 +80,7 @@ ANIMATIONS = {
     "spider_stopped": ["spider_stopped_{:003}".format(frame) for frame in range(1, 3 + 1)],
 }
 
+# Adding animation images to sprite dict
 for animation in chain.from_iterable(ANIMATIONS.values()):
     SPRITES[animation] = f"{animation}.png"
 
@@ -83,7 +88,7 @@ for animation in chain.from_iterable(ANIMATIONS.values()):
 # of (flipped_x, flipped_y, sprite_name)
 IMAGE_SPRITES: Dict[Tuple[bool, bool, str], pg.Surface] = {}
 
-
+# Sprites which can be considered background for game_edit usage
 ALLOWED_BG = [
     "bricks1",
     "bricks2",
@@ -96,16 +101,19 @@ ALLOWED_BG = [
     "grey_brick",
 ]
 
+# Sprites which can be considered enemy for game_edit usage
 ALLOWED_ENEMY = [
     "skeleton",
     "spider",
 ]
 
+# Sprites which can be considered shrub for game_edit usage
 ALLOWED_SHRUB = [
     "painting",
     "painting2",
 ]
 
+# Sprites which can be considered buff for game_play usage
 ALLOWED_BUFFS = [
     "buff_accumen",
     "buff_corpus",
@@ -114,6 +122,7 @@ ALLOWED_BUFFS = [
     "buff_pax",
 ]
 
+# List of sprites considered walls
 WALLS = [
     "bricks1",
     "bricks2",
@@ -122,6 +131,7 @@ WALLS = [
     "black",
 ]
 
+# List of sprites considered doors
 DOORS = [
     "wood_door",
 ]
@@ -143,6 +153,7 @@ TILE_MAPS = {
 
 SOUNDS = {}
 
+# Key assignment for game_edit sprite type switching
 KEY_ENEMY = 0
 KEY_BACKGROUND = 1
 KEY_SHRUB = 2
@@ -179,9 +190,11 @@ LEVEL_CONNECTIONS = {
 
 CONNECTION_MATCH = {}
 
+# Values used in map_logic assigning the upper maximum and middle starting position
 MAP_GRID_UPPER_MAX = 40
 STARTING_POSITION = (19, 19)
 
+# dict{dict} used to determine enemy stats on creation
 ENEMY_STATS = {
     "skeleton": {
         "value": 5,
@@ -209,6 +222,7 @@ ENEMY_STATS = {
     },
 }
 
+# dict{dict} used to determine item stats on creation
 ITEM_STATS = {
     "money": {
         "anim_stop": ANIMATIONS["money_stopped"],

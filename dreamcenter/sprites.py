@@ -433,7 +433,8 @@ class Buff(DirectedSprite):
         self.target.cooldown += 1
 
     def action_accumen(self):
-        self.target.cooldown -= 1
+        if self.target.cooldown >= 0:
+            self.target.cooldown -= 1
         self.target.range -= 1
 
     def action_intuitus(self):
@@ -731,7 +732,7 @@ class SpriteManager:
             frames=create_animation_roll(
                 {
                     AnimationState.dying: extend(
-                        ENEMY_STATS[base_index]["anim_dying"], 7
+                        ENEMY_STATS[base_index]["anim_dying"], 12
                     ),
                     AnimationState.walking: cycle(extend(
                         ENEMY_STATS[base_index]["anim_walk"], 7
@@ -778,6 +779,8 @@ class SpriteManager:
             accumulate(repeat(vh, max_distance), func=operator.add, initial=v2),
             count(random.randint(0, 180)),
         )
+        for _ in range(3):
+            next(path)
         projectile = Projectile.create_from_sprite(
             position=source,
             groups=[self.layers],

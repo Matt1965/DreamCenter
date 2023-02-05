@@ -5,7 +5,7 @@ from pygame import Vector2 as Vector
 from itertools import repeat
 from dreamcenter.sprites import SpriteManager
 from dreamcenter.helpers import get_line
-from dreamcenter.enumeration import AnimationState, MovementType
+from dreamcenter.enumeration import AnimationState, MovementType, Layer
 from dreamcenter.path_finding import find_path, convert_path
 
 

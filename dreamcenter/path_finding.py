@@ -13,10 +13,15 @@ from dreamcenter.constants import (
 finder = AStarFinder(diagonal_movement=DiagonalMovement.if_at_most_one_obstacle)
 
 
-def define_grid(level):
+def define_grid(level) -> Grid:
+    """
+    Breaks apart the tiles into 4 quadrants
+    Uses the information stored in TILE_MAPS to build a path grid
+    """
     matrix = []
     _matrix_row = []
     _matrix_row2 = []
+
     for row in level:
         for tile in row:
             _matrix_row += TILE_MAPS[tile.index][0]
@@ -28,16 +33,24 @@ def define_grid(level):
     return Grid(matrix=matrix)
 
 
-def find_path(start, end, grid):
+def find_path(start, end, grid) -> list[tuple]:
+    """
+    Uses the pathfinder library function to define the shortest path to a point using A* logic
+    """
     _start = grid.node(int(start[0] // (TILE_HEIGHT / 2)), int(start[1] // (TILE_WIDTH / 2)))
     _end = grid.node(int(end[0] // (TILE_HEIGHT / 2)), int(end[1] // (TILE_WIDTH / 2)))
+
     path, runs = finder.find_path(_start, _end, grid)
+    print(path)
     grid.cleanup()
 
     return path
 
 
-def convert_path(path, speed):
+def convert_path(path, speed) -> iter:
+    """
+    Converts the shortest path into a chain of iterators similar to other movement zips
+    """
     vector_path = []
     grid_size = TILE_WIDTH / 2
 

@@ -38,6 +38,9 @@ class MovementType(enum.Enum):
 
 
 class Layer(enum.IntEnum):
+    """
+    Possible layers which controls sprite display order
+    """
 
     background = 0
     wall = 20

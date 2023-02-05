@@ -375,9 +375,9 @@ class GamePlaying(GameLoop):
         for enemies, projectiles in collide_mask(enemies, projectiles):
             for enemy in [enemies]:
                 for projectile in projectiles:
-                    if pg.sprite.collide_mask(projectile, enemy):
-                        if projectile.animation_state == AnimationState.stopped:
-                            enemy.health -= projectile.damage
+                    if projectile.animation_state == AnimationState.stopped:
+                        enemy.health -= projectile.damage
+                    if enemy.animation_state != AnimationState.dying:
                         projectile.animation_state = AnimationState.exploding
 
         enemies = self.layers.get_sprites_from_layer(Layer.enemy)
