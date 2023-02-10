@@ -25,7 +25,6 @@ MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT = 1, 2, 3
 # Animation images added separately
 SPRITES = {
     "edwardo": "edwardo.png",
-    "edwardowithgun": "edwardowithgun.png",
     "background": "background.png",
     "logo": "logo.png",
     "edit_background": "edit_background.png",
@@ -35,15 +34,18 @@ SPRITES = {
     "bricks2": "bricks2.png",
     "bricks3": "bricks3.png",
     "bricks4": "bricks4.png",
+    "wood_floor": "wood_floor.png",
     "bloody_floor": "bloody_floor.png",
     "projectile": "projectile.png",
     "skeleton": "Skeleton_Walk_000.png",
     "collision_mask": "collision_mask.png",
+    "bg_mask": "bg_mask.png",
     "pause_menu": "pause_menu.png",
     "game_over_splash": "game_over_splash.png",
     "half_heart": "half_heart.png",
     "empty_heart": "empty_heart.png",
     "black": "black.png",
+    "office_floor": "office_floor.png",
     "wood_door": "wood_door.png",
     "map_4_way": "map_4_way.png",
     "map_3_way": "map_3_way.png",
@@ -63,9 +65,21 @@ SPRITES = {
     "stapler": "stapler.png",
     "grey_brick": "grey_brick.png",
     "painting": "painting.png",
-    "painting2": "painting2.png",
     "spider": "spider_stopped_000.png",
     "random": "random.png",
+    "edward_arm": "edward_arm.png",
+    "school_wall": "school_wall.png",
+    "school_wall_back": "school_wall_back.png",
+    "school_wall_back_corner": "school_wall_back_corner.png",
+    "school_wall_incorner": "school_wall_incorner.png",
+    "school_wall_outcorner": "school_wall_outcorner.png",
+    "school_wall_back_incorner": "school_wall_back_incorner.png",
+    "school_wall_blank": "school_wall_blank.png",
+    "window": "window.png",
+    "blackboard": "blackboard.png",
+    "papers": "papers.png",
+    "chair": "chair.png",
+    "chair_remains": "chair_remains.png",
 }
 
 # Animation dicts
@@ -78,6 +92,7 @@ ANIMATIONS = {
     "spider_walk": ["spider_walk_{:003}".format(frame) for frame in range(1, 2 + 1)],
     "spider_death": ["spider_death_{:003}".format(frame) for frame in range(1, 3 + 1)],
     "spider_stopped": ["spider_stopped_{:003}".format(frame) for frame in range(1, 3 + 1)],
+    "chair_death": ["chair_{:003}".format(frame) for frame in range(1, 1 + 1)]
 }
 
 # Adding animation images to sprite dict
@@ -99,6 +114,15 @@ ALLOWED_BG = [
     "black",
     "wood_door",
     "grey_brick",
+    "office_floor",
+    "wood_floor",
+    "school_wall",
+    "school_wall_back",
+    "school_wall_back_corner",
+    "school_wall_incorner",
+    "school_wall_outcorner",
+    "school_wall_back_incorner",
+    "school_wall_blank",
 ]
 
 # Sprites which can be considered enemy for game_edit usage
@@ -110,7 +134,10 @@ ALLOWED_ENEMY = [
 # Sprites which can be considered shrub for game_edit usage
 ALLOWED_SHRUB = [
     "painting",
-    "painting2",
+    "window",
+    "blackboard",
+    "papers",
+    "chair",
 ]
 
 # Sprites which can be considered buff for game_play usage
@@ -129,12 +156,20 @@ WALLS = [
     "bricks3",
     "bricks4",
     "black",
+    "school_wall",
+    "school_wall_incorner",
+    "school_wall_outcorner",
+    "school_wall_blank",
 ]
 
 # List of sprites considered doors
 DOORS = [
     "wood_door",
 ]
+
+DEBRIS = {
+    "chair": {"replacement": "chair_remains", "anim_dying": ANIMATIONS["chair_death"]},
+}
 
 """
 (top left, top right), (bottom left, bottom right)
@@ -149,6 +184,15 @@ TILE_MAPS = {
     "blank": ((1, 1), (1, 1)),
     "black": ((0, 0), (0, 0)),
     "wood_door": ((1, 1), (1, 1)),
+    "office_floor": ((1, 1), (1, 1)),
+    "wood_floor": ((1, 1), (1, 1)),
+    "school_wall": ((0, 0), (0, 0)),
+    "school_wall_incorner": ((0, 0), (0, 0)),
+    "school_wall_outcorner": ((0, 0), (0, 0)),
+    "school_wall_blank": ((0, 0), (0, 0)),
+    "school_wall_back": ((0, 0), (0, 0)),
+    "school_wall_back_corner": ((0, 0), (0, 0)),
+    "school_wall_back_incorner": ((0, 0), (0, 0)),
 }
 
 SOUNDS = {}

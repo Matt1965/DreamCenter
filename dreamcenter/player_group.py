@@ -7,6 +7,9 @@ import pygame as pg
 
 @dataclass
 class PlayerGroup:
+    """
+    Used to manage actions related to the player and player sprite
+    """
     sprite_manager: SpriteManager
     player = None
     empty_hearts = []
@@ -14,19 +17,31 @@ class PlayerGroup:
     movement_directions = {"top": False, "bottom": False, "left": False, "right": False}
     firing = False
 
-    def spawn_player(self):
+    def spawn_player(self) -> None:
+        """
+        Creates player sprite and assigns to player variable inside class
+        """
         self.player = self.sprite_manager.create_player()
 
-    def move_player(self):
+    def move_player(self) -> None:
+        """
+        Uses movement_directions to determine which keys are pressed
+        Scales to length based on player speed and moves player
+        """
         move = Vector(
             self.movement_directions["right"] - self.movement_directions["left"],
             self.movement_directions["bottom"] - self.movement_directions["top"]
         )
+
         if move.length_squared() > 0:
             move.scale_to_length(self.player.speed)
             self.player.position += move
 
-    def fire_projectile(self):
+    def fire_projectile(self) -> None:
+        """
+        Checks if player is holding mouse and able to fire
+        Creates projectile based on player stats if able
+        """
         if self.player.cooldown_remaining == 0 and self.firing is True:
             self.sprite_manager.create_projectile(
                 self.player.position,

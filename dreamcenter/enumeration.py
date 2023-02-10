@@ -47,6 +47,7 @@ class Layer(enum.IntEnum):
     door = 30
     enemy = 40
     shrub = 50
+    debris = 55
     trap = 60
     item = 65
     buff = 68

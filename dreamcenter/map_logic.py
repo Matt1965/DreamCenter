@@ -5,7 +5,7 @@ from dreamcenter.constants import LEVEL_CONNECTIONS, MAP_GRID_UPPER_MAX
 @dataclass
 class Map:
     end_points: list = field(default_factory=list)
-    seed_amt: int = field(default=8)
+    seed_amt: int = field(default=15)
     map_grid: list[list[dict]] = field(default_factory=list)
 
     def __post_init__(self):
@@ -144,7 +144,7 @@ class Map:
 
         # Special room assignments
         self.identify_end_points()
-        self.assign_shop()
+        self.assign_special("shop")
 
 
     def visualize_map(self) -> list:
@@ -174,23 +174,23 @@ class Map:
                 except KeyError:
                     pass
 
-    def assign_shop(self) -> None:
+    def assign_special(self, type) -> None:
         """
         Chooses a random end point tile, removes it from the end point list,
         and assigns a random level of type shop to that position
         """
-        shop_pool = []
+        special_pool = []
 
         grid_pos = random.choice(self.end_points)
         self.end_points.remove(grid_pos)
 
         for level in LEVEL_CONNECTIONS:
             # Exclude any levels not of type shop
-            if LEVEL_CONNECTIONS[level]["type"] != "shop":
+            if LEVEL_CONNECTIONS[level]["type"] != type:
                 continue
 
             if LEVEL_CONNECTIONS[level]["connection"] == \
                     LEVEL_CONNECTIONS[self.map_grid[grid_pos[0]][grid_pos[1]]["level"]]["connection"]:
-                shop_pool.append(level)
+                special_pool.append(level)
 
-        self.map_grid[grid_pos[0]][grid_pos[1]]["level"] = random.choice(shop_pool)
+        self.map_grid[grid_pos[0]][grid_pos[1]]["level"] = random.choice(special_pool)

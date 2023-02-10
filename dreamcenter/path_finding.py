@@ -41,7 +41,6 @@ def find_path(start, end, grid) -> list[tuple]:
     _end = grid.node(int(end[0] // (TILE_HEIGHT / 2)), int(end[1] // (TILE_WIDTH / 2)))
 
     path, runs = finder.find_path(_start, _end, grid)
-    print(path)
     grid.cleanup()
 
     return path

@@ -22,6 +22,7 @@ from dreamcenter.constants import (
     ITEM_STATS,
     ALLOWED_BUFFS,
     ALLOWED_SHRUB,
+    DEBRIS,
 )
 from dreamcenter.enumeration import (
     AnimationState,
@@ -109,11 +110,11 @@ class Sprite(pg.sprite.Sprite):
         self.animation_state = animation_state
         if self.image is not None:
             if self.index in ALLOWED_BG:
-                self.mask = pg.mask.from_surface(self.image)
+                self.mask = pg.mask.from_surface(
+                    pg.transform.scale(IMAGE_SPRITES[(False, False, "bg_mask")], self.image.get_size()))
             else:
                 self.mask = pg.mask.from_surface(
-                    pg.transform.scale(IMAGE_SPRITES[(False, False, "collision_mask")], self.image.get_size())
-                    )
+                    pg.transform.scale(IMAGE_SPRITES[(False, False, "collision_mask")], self.image.get_size()))
             self.surface = self.image.copy()
             self.rotate(self.orientation)
         if self.rect is not None and position is not None:
@@ -127,7 +128,8 @@ class Sprite(pg.sprite.Sprite):
         self.surface = self.image.copy()
         self.rect = self.image.get_rect(center=self.rect.center)
         if self.index in ALLOWED_BG:
-            self.mask = pg.mask.from_surface(self.image)
+            self.mask = pg.mask.from_surface(
+                    pg.transform.scale(IMAGE_SPRITES[(False, False, "bg_mask")], self.image.get_size()))
         else:
             self.mask = pg.mask.from_surface(
                 pg.transform.scale(IMAGE_SPRITES[(False, False, "collision_mask")], self.image.get_size())
@@ -157,7 +159,9 @@ class Sprite(pg.sprite.Sprite):
         self.image = new_image
         self.rect = new_rect
         if self.index in ALLOWED_BG:
-            self.mask = pg.mask.from_surface(self.image)
+            self.mask = pg.mask.from_surface(
+                    pg.transform.rotate(
+                    pg.transform.scale(IMAGE_SPRITES[(False, False, "bg_mask")], self.image.get_size()), angle))
         else:
             self.mask = pg.mask.from_surface(
                 pg.transform.scale(IMAGE_SPRITES[(False, False, "collision_mask")], self.image.get_size())
@@ -596,6 +600,16 @@ class Health(Sprite):
     def update(self):
         pass
 
+class Debris(DirectedSprite):
+    _layer = Layer.debris
+
+    def __init__(
+        self,
+        replacement=str,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.replacement = replacement
 
 @dataclass
 class SpriteManager:
@@ -630,6 +644,25 @@ class SpriteManager:
             position=position,
         )
         return wall
+
+    def create_debris(self, position, orientation=None, index=None):
+        debris = Debris.create_from_sprite(
+            sounds=None,
+            groups=[self.layers],
+            index=index,
+            state=SpriteState.stopped,
+            orientation=orientation,
+            position=position,
+            replacement=DEBRIS[index]["replacement"],
+            frames=create_animation_roll(
+                {
+                    AnimationState.dying: extend(
+                        DEBRIS[index]["anim_dying"], 12
+                    ),
+                }
+            )
+        )
+        return debris
 
     def create_trap(self, position, orientation=None, index=None):
         trap = Trap.create_from_sprite(
@@ -752,7 +785,7 @@ class SpriteManager:
         """
         self.indices = cycle(ALLOWED_SHRUB)
         if not index:
-            index = next(self.indices)
+            index = self._last_index
         else:
             base_index = index.split("_")[0].lower()
         if orientation is None:
@@ -760,7 +793,7 @@ class SpriteManager:
         shrub = Shrub.create_from_sprite(
             sounds=None,
             groups=[self.layers],
-            index=index,
+            index=next(self.indices) if index is None else index,
             orientation=orientation,
         )
         shrub.move(position)

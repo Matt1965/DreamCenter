@@ -53,7 +53,7 @@ class GameEditing(GameLoop):
         )
 
     def create_blank_level(self):
-        self.load_level(create_tile_map({"index": "blank", "orientation": 0}), [], [])
+        self.load_level(create_tile_map({"index": "blank", "orientation": 0}), [], [], [], [])
 
     def load_level(self, background, shrubs, enemies, buffs, traps):
         """

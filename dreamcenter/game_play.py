@@ -25,6 +25,7 @@ from dreamcenter.constants import (
     CONNECTION_MATCH,
     LEVEL_CONNECTIONS,
     ALLOWED_BUFFS,
+    DEBRIS,
 )
 from dreamcenter.helpers import (
     create_surface,
@@ -100,7 +101,7 @@ class GamePlaying(GameLoop):
         self.player_group.spawn_default_hearts()
 
     def draw_background(self):
-        self.background.blit(IMAGE_SPRITES[(False, False, "play_background")], (0, 0))
+        self.background.blit(IMAGE_SPRITES[(False, False, "edit_background")], (0, 0))
         for (y, x, dx, dy) in tile_positions():
             background_tile = self.level[y][x]
             if background_tile.index in DOORS:
@@ -125,7 +126,11 @@ class GamePlaying(GameLoop):
     def generate_map(self):
         self.map_manager.generate_map()
 
-    def determine_level(self):
+    def determine_level(self) -> None:
+        """
+        Uses the map_logic grid to determine the level being moved into
+        If the level has been previously visited it will have a saved state in "saved_state" of the grid
+        """
         if self.map_manager.map_grid[self.level_position[0]][self.level_position[1]]["saved_state"]:
             data = self.map_manager.map_grid[self.level_position[0]][self.level_position[1]]["saved_state"]
             self.load_level(
@@ -142,6 +147,7 @@ class GamePlaying(GameLoop):
 
     def change_level(self, direction="start"):
         previous_position = self.map_manager.map_grid[self.level_position[0]][self.level_position[1]]["position"]
+
         match direction:
             case "up":
                 self.level_position[0] -= 1
@@ -157,6 +163,7 @@ class GamePlaying(GameLoop):
                 self.player_group.player.position += Vector([-1450, 0])
             case "start":
                 pass
+
         if direction != "start":
             self.map_manager.map_grid[previous_position[0]][previous_position[1]]["saved_state"] = save_level(
                 self.level,
@@ -189,13 +196,22 @@ class GamePlaying(GameLoop):
         self.level = create_background_tile_map(background)
         self.draw_background()
         for shrub in shrubs:
-            self.sprite_manager.select_sprites(
-                self.sprite_manager.create_shrub(
-                    position=shrub["position"],
-                    orientation=shrub["orientation"],
-                    index=shrub["index"],
+            if shrub["index"] in DEBRIS:
+                self.sprite_manager.select_sprites(
+                    self.sprite_manager.create_debris(
+                        position=shrub["position"],
+                        orientation=shrub["orientation"],
+                        index=shrub["index"],
+                    )
                 )
-            )
+            else:
+                self.sprite_manager.select_sprites(
+                    self.sprite_manager.create_shrub(
+                        position=shrub["position"],
+                        orientation=shrub["orientation"],
+                        index=shrub["index"],
+                    )
+                )
             self.sprite_manager.place(shrub["position"])
         for enemy in enemies:
             self.sprite_manager.select_sprites(
@@ -323,10 +339,8 @@ class GamePlaying(GameLoop):
             self.player_group.movement_directions["bottom"] = True
         if keys[pg.K_a]:
             self.player_group.movement_directions["left"] = True
-            self.player_group.player.flipped_x = True
         if keys[pg.K_d]:
             self.player_group.movement_directions["right"] = True
-            self.player_group.player.flipped_x = False
         if keys[pg.K_p]:
             self.set_state(GameState.main_menu)
         if keys[pg.K_TAB]:
@@ -350,16 +364,30 @@ class GamePlaying(GameLoop):
                 self.player_group.firing = False
 
     def handle_collision(self):
+        self.collision_wall_projectile()
+        self.collision_player_wall()
+        self.collision_enemy_projectile()
+        self.collision_enemy_wall()
+        self.collision_player_enemy()
+        self.collision_enemy_enemy()
+        self.collision_player_door()
+        self.collision_item_item()
+        self.collision_player_item()
+        self.collision_player_buff()
+        self.collision_projectile_debris()
+        self.collision_player_debris()
 
+    def collision_wall_projectile(self):
         walls = self.layers.get_sprites_from_layer(Layer.wall)
         projectiles = self.layers.get_sprites_from_layer(Layer.projectile)
-        for walls, projectiles in collide_mask(walls, projectiles, pg.sprite.collide_circle_ratio(.45)):
+        for walls, projectiles in collide_mask(walls, projectiles):
             for projectile in projectiles:
                 projectile.animation_state = AnimationState.exploding
 
+    def collision_player_wall(self):
         player = self.layers.get_sprites_from_layer(Layer.player)
         walls = self.layers.get_sprites_from_layer(Layer.wall)
-        for player, walls in collide_mask(player, walls):
+        for player, walls in collide_mask(player, walls, collide_type=None):
             for wall in walls:
                 if wall.rect.collidepoint(player.rect.center):
                     self.player_group.movement_directions["top"] = False
@@ -370,6 +398,7 @@ class GamePlaying(GameLoop):
                 if wall.rect.collidepoint((player.rect.midright[0], player.rect.midright[1] + player.rect.height / 4)):
                     self.player_group.movement_directions["right"] = False
 
+    def collision_enemy_projectile(self):
         projectiles = self.layers.get_sprites_from_layer(Layer.projectile)
         enemies = self.layers.get_sprites_from_layer(Layer.enemy)
         for enemies, projectiles in collide_mask(enemies, projectiles):
@@ -380,6 +409,7 @@ class GamePlaying(GameLoop):
                     if enemy.animation_state != AnimationState.dying:
                         projectile.animation_state = AnimationState.exploding
 
+    def collision_enemy_wall(self):
         enemies = self.layers.get_sprites_from_layer(Layer.enemy)
         walls = self.layers.get_sprites_from_layer(Layer.wall)
         for enemies, walls in collide_mask(enemies, walls):
@@ -400,15 +430,19 @@ class GamePlaying(GameLoop):
                     enemy.move(enemy.previous_position)
                     enemy.movement_cooldown_remaining = 0
 
-
+    def collision_player_enemy(self):
         enemies = self.layers.get_sprites_from_layer(Layer.enemy)
         player = self.layers.get_sprites_from_layer(Layer.player)
         for player, enemies in collide_mask(player, enemies):
             for enemy in enemies:
-                if player.invulnerable_remaining == 0:
-                    player.invulnerable_remaining = player.invulnerable_cooldown
-                    self.player_group.take_damage(enemy.collision_damage)
+                if player.invulnerable_remaining != 0:
+                    continue
+                if enemy.animation_state == AnimationState.dying:
+                    continue
+                player.invulnerable_remaining = player.invulnerable_cooldown
+                self.player_group.take_damage(enemy.collision_damage)
 
+    def collision_enemy_enemy(self):
         enemies = self.layers.get_sprites_from_layer(Layer.enemy)
         enemies_arranged = self.enemy_group.arrange_by_distance(enemies)
         for enemy in enemies_arranged:
@@ -417,6 +451,7 @@ class GamePlaying(GameLoop):
                     enemy_collided.waiting = True
             enemies.remove(enemy)
 
+    def collision_player_door(self):
         player = self.layers.get_sprites_from_layer(Layer.player)
         doors = self.layers.get_sprites_from_layer(Layer.door)
         for player, doors in collide_mask(player, doors, pg.sprite.collide_circle_ratio(.6)):
@@ -434,12 +469,14 @@ class GamePlaying(GameLoop):
                     self.change_level("down")
                     break
 
+    def collision_item_item(self):
         items = self.layers.get_sprites_from_layer(Layer.item)
         for item in items:
             for item_collided in pg.sprite.spritecollide(item, items, False, collided=pg.sprite.collide_mask):
                 if item is not item_collided:
                     item_collided.random_movement(15)
 
+    def collision_player_item(self):
         items = self.layers.get_sprites_from_layer(Layer.item)
         player = self.layers.get_sprites_from_layer(Layer.player)
         for player, items in collide_mask(player, items, pg.sprite.collide_circle_ratio(2)):
@@ -447,6 +484,7 @@ class GamePlaying(GameLoop):
                 item.action()
                 item.kill()
 
+    def collision_player_buff(self):
         buffs = self.layers.get_sprites_from_layer(Layer.buff)
         player = self.layers.get_sprites_from_layer(Layer.player)
         for player, buffs in collide_mask(player, buffs):
@@ -455,6 +493,20 @@ class GamePlaying(GameLoop):
                     buff.action()
                     buff.kill()
                     self.player_group.player.money -= buff.cost
+
+    def collision_player_debris(self):
+        player = self.layers.get_sprites_from_layer(Layer.player)
+        debris = self.layers.get_sprites_from_layer(Layer.debris)
+        for player, debris in collide_mask(player, debris):
+            for debri in debris:
+                debri.animation_state = AnimationState.dying
+
+    def collision_projectile_debris(self):
+        projectiles = self.layers.get_sprites_from_layer(Layer.projectile)
+        debris = self.layers.get_sprites_from_layer(Layer.debris)
+        for projectiles, debris in collide_mask(projectiles, debris):
+            for debri in debris:
+                debri.animation_state = AnimationState.dying
 
     def game_over_check(self):
         if self.player_group.player.health <= 0:
