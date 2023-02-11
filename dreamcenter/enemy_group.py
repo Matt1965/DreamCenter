@@ -35,6 +35,7 @@ class EnemyGroup:
         if enemy.movement in (MovementType.wander_chase, MovementType.chase, MovementType.ranged_chase):
             if self.in_sight(enemy, self.player):
                 enemy.direct_movement(self.player.rect.center)
+                enemy.currently_pathfinding = False
                 if enemy.animation_state is not AnimationState.walking:
                     enemy.animation_state = AnimationState.walking
 

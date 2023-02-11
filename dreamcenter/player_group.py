@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from dreamcenter.sprites import SpriteManager
 from pygame import Vector2 as Vector
 from dreamcenter.constants import TILE_WIDTH
+from dreamcenter.enumeration import AnimationState
 import pygame as pg
 
 
@@ -34,8 +35,10 @@ class PlayerGroup:
         )
 
         if move.length_squared() > 0:
+            self.player.animation_state = AnimationState.walking
             move.scale_to_length(self.player.speed)
             self.player.position += move
+        else: self.player.animation_state = AnimationState.stopped
 
     def fire_projectile(self) -> None:
         """

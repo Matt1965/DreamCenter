@@ -92,7 +92,9 @@ ANIMATIONS = {
     "spider_walk": ["spider_walk_{:003}".format(frame) for frame in range(1, 2 + 1)],
     "spider_death": ["spider_death_{:003}".format(frame) for frame in range(1, 3 + 1)],
     "spider_stopped": ["spider_stopped_{:003}".format(frame) for frame in range(1, 3 + 1)],
-    "chair_death": ["chair_{:003}".format(frame) for frame in range(1, 1 + 1)]
+    "chair_death": ["chair_{:003}".format(frame) for frame in range(1, 2 + 1)],
+    "edward_idle": ["edward_idle_{:003}".format(frame) for frame in range(1, 3 + 1)],
+    "edward_walk": ["edward_walk_{:003}".format(frame) for frame in range(1, 3 + 1)],
 }
 
 # Adding animation images to sprite dict

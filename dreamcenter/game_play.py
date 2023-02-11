@@ -296,8 +296,8 @@ class GamePlaying(GameLoop):
                     )
                 )
         self.map_display.blit(IMAGE_SPRITES[(False, False, "map_you_are_here")], (525, 282))
-        self.screen.blit(self.map_display, (250, 190))
-        self.screen.blit(IMAGE_SPRITES[(False, False, "map_border")], (180, 125))
+        self.screen.blit(self.map_display, (370, 190))
+        self.screen.blit(IMAGE_SPRITES[(False, False, "map_border")], (300, 125))
 
     def update_text_values(self):
         for item in self.text_group.text_sprites:
@@ -416,6 +416,8 @@ class GamePlaying(GameLoop):
             for enemy in [enemies]:
                 if enemy.path is None:
                     continue
+                if enemy.currently_pathfinding:
+                    continue
                 if enemy.movement in (MovementType.chase, MovementType.ranged_chase):
                     enemy.path = self.enemy_group.find_pathfinding_path(
                         enemy.rect.center,
@@ -424,6 +426,7 @@ class GamePlaying(GameLoop):
                         enemy.speed,
                     )
                     enemy.animation_state = AnimationState.walking
+                    enemy.currently_pathfinding = True
                     enemy.final_position = self.player_group.player.rect.center
                 if enemy.movement in (MovementType.wander_chase, MovementType.wander):
                     enemy.path = None
@@ -506,7 +509,11 @@ class GamePlaying(GameLoop):
         debris = self.layers.get_sprites_from_layer(Layer.debris)
         for projectiles, debris in collide_mask(projectiles, debris):
             for debri in debris:
+                for projectile in [projectiles]:
+                    if debri.animation_state != AnimationState.dying:
+                        projectile.animation_state = AnimationState.exploding
                 debri.animation_state = AnimationState.dying
+                self.layers.change_layer(debri, Layer.shrub)
 
     def game_over_check(self):
         if self.player_group.player.health <= 0:

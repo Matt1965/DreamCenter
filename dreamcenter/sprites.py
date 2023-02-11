@@ -191,7 +191,11 @@ class Sprite(pg.sprite.Sprite):
                 self.set_sprite_index(next_frame_index)
         except StopIteration:
             if AnimationState.state_kills_sprite(self.animation_state):
-                self.kill()
+                if self.index.split("_")[0] in DEBRIS:
+                    self.index = DEBRIS[self.index.split("_")[0]]["replacement"]
+                    self.animation_state = AnimationState.stopped
+                else:
+                    self.kill()
 
     def play(self):
         if self.sounds is not None and pg.mixer and self.channel is not None:
@@ -474,6 +478,7 @@ class Enemy(DirectedSprite):
         movement=MovementType.chase,
         movement_cooldown=0,
         movement_cooldown_remaining=0,
+        currently_pathfinding=False,
         **kwargs
     ):
         # Tracks the offset, if any, if the image is flipped
@@ -488,6 +493,7 @@ class Enemy(DirectedSprite):
         self.movement = movement
         self.movement_cooldown = movement_cooldown
         self.movement_cooldown_remaining = movement_cooldown_remaining
+        self.currently_pathfinding = currently_pathfinding
         super().__init__(**kwargs)
 
     def update(self):
@@ -513,7 +519,7 @@ class Player(Sprite):
         damage=25,
         cooldown_remaining=0,
         position=[800, 500],
-        speed=8,
+        speed=4,
         range=300,
         state=SpriteState.unknown,
         invulnerable_remaining=0,
@@ -657,7 +663,7 @@ class SpriteManager:
             frames=create_animation_roll(
                 {
                     AnimationState.dying: extend(
-                        DEBRIS[index]["anim_dying"], 12
+                        DEBRIS[index]["anim_dying"], 6
                     ),
                 }
             )
@@ -733,6 +739,16 @@ class SpriteManager:
             index="edwardo",
             groups=[self.layers],
             state=SpriteState.moving,
+            frames=create_animation_roll(
+                {
+                    AnimationState.walking: cycle(extend(
+                        ANIMATIONS["edward_walk"], 7
+                    )),
+                    AnimationState.stopped: cycle(extend(
+                        ANIMATIONS["edward_idle"], 20
+                    )),
+                },
+            )
         )
         player.move(position)
         return player
