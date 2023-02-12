@@ -146,16 +146,26 @@ class Sprite(pg.sprite.Sprite):
     def rotate_cache_key(self):
         return (self.flipped_x, self.flipped_y, self.index)
 
-    def rotate(self, angle):
+    def rotate(self, angle, offset=(0, 0)):
+        if not self.index:
+            return
         if angle == self._last_angle:
             return
         try:
             k = (self.rotate_cache_key(), angle)
             new_image = CACHE[k]
         except KeyError:
-            new_image = pg.transform.rotate(self.surface, angle)
+            new_image = pg.transform.rotate(self.image_tiles[(self.flipped_x, self.flipped_y, self.index)], int(angle))
             CACHE[k] = new_image
-        new_rect = new_image.get_rect(center=self.rect.center)
+        if offset != (0, 0):
+            original_image = self.image_tiles[(self.flipped_x, self.flipped_y, self.index)]
+            image_rect = original_image.get_rect(topleft= (self.position[0] - offset[0], self.position[1] - offset[1]))
+            center_to_pivot = Vector(self.position) - image_rect.center
+            rotated_offset = center_to_pivot.rotate(-angle)
+            rotated_center = (self.position[0] - rotated_offset.x, self.position[1] - rotated_offset.y)
+            new_rect = new_image.get_rect(center=rotated_center)
+        else:
+            new_rect = new_image.get_rect(center=self.rect.center)
         self.image = new_image
         self.rect = new_rect
         if self.index in ALLOWED_BG:
@@ -196,6 +206,16 @@ class Sprite(pg.sprite.Sprite):
                     self.animation_state = AnimationState.stopped
                 else:
                     self.kill()
+            if AnimationState.state_ends(self.animation_state):
+                self.animation_state = AnimationState.stopped
+                self.frames = create_animation_roll(
+                    {
+                        AnimationState.firing: extend(
+                            self.original_frames, self.original_frames_speed
+                        ),
+                    }
+                )
+
 
     def play(self):
         if self.sounds is not None and pg.mixer and self.channel is not None:
@@ -563,6 +583,34 @@ class Player(Sprite):
             return True
         return False
 
+class Weapon(Sprite):
+    _layer = Layer.weapon
+
+    def __init__(
+        self,
+        offset=(31, 2),
+        position=[805, 510],
+        angle=0,
+        state=SpriteState.unknown,
+        original_frames = None,
+        original_frames_speed = 5,
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+        self.offset = offset
+        self.position = position
+        self.angle = angle
+        self.state = state
+        self.original_frames = original_frames
+        self.original_frames_speed = original_frames_speed
+
+    def update(self):
+        self.rotate(self.angle, self.offset)
+        print()
+        try:
+            self.animate()
+        except StopIteration:
+            self.state = SpriteState.stopped
 
 class Background(Sprite):
 
@@ -752,6 +800,15 @@ class SpriteManager:
         )
         player.move(position)
         return player
+
+    def create_weapon(self, position=(800, 500)):
+        weapon = Weapon.create_from_sprite(
+            index="edward_arm",
+            groups=[self.layers],
+            state=SpriteState.stopped,
+        )
+        weapon.move(position)
+        return weapon
 
     def create_enemy(self, position, orientation=None, index=None):
         self.indices = cycle(ALLOWED_ENEMY)

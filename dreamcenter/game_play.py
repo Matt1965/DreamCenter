@@ -152,15 +152,19 @@ class GamePlaying(GameLoop):
             case "up":
                 self.level_position[0] -= 1
                 self.player_group.player.position += Vector([0, 855])
+                self.player_group.weapon.position += Vector([0, 855])
             case "down":
                 self.level_position[0] += 1
                 self.player_group.player.position += Vector([0, -855])
+                self.player_group.weapon.position += Vector([0, -855])
             case "left":
                 self.level_position[1] -= 1
                 self.player_group.player.position += Vector([1450, 0])
+                self.player_group.weapon.position += Vector([1450, 0])
             case "right":
                 self.level_position[1] += 1
                 self.player_group.player.position += Vector([-1450, 0])
+                self.player_group.weapon.position += Vector([-1450, 0])
             case "start":
                 pass
 
@@ -475,7 +479,7 @@ class GamePlaying(GameLoop):
     def collision_item_item(self):
         items = self.layers.get_sprites_from_layer(Layer.item)
         for item in items:
-            for item_collided in pg.sprite.spritecollide(item, items, False, collided=pg.sprite.collide_mask):
+            for item_collided in pg.sprite.spritecollide(item, items, False, collided=pg.sprite.collide_circle_ratio(.4)):
                 if item is not item_collided:
                     item_collided.random_movement(15)
 
@@ -521,6 +525,6 @@ class GamePlaying(GameLoop):
 
     def curated_sprite_removal(self):
         for group in Layer:
-            if group in (Layer.player, Layer.health):
+            if group in (Layer.player, Layer.health, Layer.weapon):
                 continue
             self.layers.remove_sprites_of_layer(group)

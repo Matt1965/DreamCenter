@@ -8,6 +8,7 @@ class AnimationState(enum.Enum):
     walking = "walking"
     dying = "dying"
     exploding = "exploding"
+    firing = "firing"
 
     @classmethod
     def state_kills_sprite(cls, state):
@@ -15,6 +16,13 @@ class AnimationState(enum.Enum):
         Returns true when in a state that should kill sprite upon completion
         """
         return state in (cls.exploding, cls.dying)
+
+    @classmethod
+    def state_ends(cls, state):
+        """
+        Returns true when in a state that should end and return to stopped
+        """
+        return state == cls.firing
 
 
 class SpriteState(enum.Enum):
@@ -43,15 +51,16 @@ class Layer(enum.IntEnum):
     """
 
     background = 0
-    wall = 20
-    door = 30
-    enemy = 40
-    shrub = 50
-    debris = 55
-    trap = 60
-    item = 65
-    buff = 68
-    player = 70
-    health = 80
-    projectile = 90
-    text = 100
+    wall = 5
+    door = 10
+    shrub = 15
+    debris = 20
+    enemy = 25
+    trap = 30
+    item = 35
+    buff = 40
+    player = 45
+    weapon = 50
+    health = 55
+    projectile = 60
+    text = 65
