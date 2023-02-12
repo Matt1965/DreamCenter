@@ -366,6 +366,10 @@ class Text(DirectedSprite):
         self.surface = self.image
         self.rect = self.image.get_rect(center=self.rect.center)
 
+    def update(self):
+        if self.text_type:
+            self.move(self.position)
+
 
 class Projectile(DirectedSprite):
     """
@@ -540,10 +544,12 @@ class Player(Sprite):
         cooldown_remaining=0,
         position=[800, 500],
         speed=4,
-        range=300,
+        range=100,
         state=SpriteState.unknown,
         invulnerable_remaining=0,
         invulnerable_cooldown=40,
+        shot_speed=5,
+        luck=0,
         money=0,
         **kwargs
     ):
@@ -559,6 +565,8 @@ class Player(Sprite):
         self.cooldown_remaining = cooldown_remaining
         self.invulnerable_remaining = invulnerable_remaining
         self.invulnerable_cooldown = invulnerable_cooldown
+        self.shot_speed = shot_speed
+        self.luck = luck
         self.money = money
 
     def update(self):
@@ -606,7 +614,6 @@ class Weapon(Sprite):
 
     def update(self):
         self.rotate(self.angle, self.offset)
-        print()
         try:
             self.animate()
         except StopIteration:
@@ -664,6 +671,12 @@ class Debris(DirectedSprite):
     ):
         super().__init__(**kwargs)
         self.replacement = replacement
+
+class Menu(Sprite):
+    _layer = Layer.menu
+
+    def update(self):
+        pass
 
 @dataclass
 class SpriteManager:
@@ -748,6 +761,15 @@ class SpriteManager:
             position=position,
         )
         return health
+
+    def create_menu(self, position, index=None):
+        menu = Menu.create_from_sprite(
+            position=position,
+            groups=[self.layers],
+            index=index
+        )
+        menu.move(position, False)
+        return menu
 
     def create_item(self, position, target, index=None):
         if index:

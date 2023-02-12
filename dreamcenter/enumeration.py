@@ -63,4 +63,5 @@ class Layer(enum.IntEnum):
     weapon = 50
     health = 55
     projectile = 60
-    text = 65
+    menu = 65
+    text = 70

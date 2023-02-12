@@ -65,6 +65,7 @@ SPRITES = {
     "stapler": "stapler.png",
     "grey_brick": "grey_brick.png",
     "painting": "painting.png",
+    "painting2": "painting2.png",
     "spider": "spider_stopped_000.png",
     "random": "random.png",
     "edward_arm": "edward_arm.png",
@@ -80,6 +81,7 @@ SPRITES = {
     "papers": "papers.png",
     "chair": "chair.png",
     "chair_remains": "chair_remains.png",
+    "stats_display": "stats_display.png",
 }
 
 # Animation dicts
@@ -137,6 +139,7 @@ ALLOWED_ENEMY = [
 # Sprites which can be considered shrub for game_edit usage
 ALLOWED_SHRUB = [
     "painting",
+    "painting2",
     "window",
     "blackboard",
     "papers",

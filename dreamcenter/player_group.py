@@ -52,7 +52,7 @@ class PlayerGroup:
         """
         if self.player.cooldown_remaining == 0 and self.firing is True:
             self.sprite_manager.create_projectile(
-                (self.player.position[0], self.player.position[1]),
+                (self.player.position[0], self.player.position[1] + 17),
                 pg.mouse.get_pos(),
                 damage=self.player.damage,
                 max_distance=self.player.range

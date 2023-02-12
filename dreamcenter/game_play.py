@@ -99,6 +99,7 @@ class GamePlaying(GameLoop):
     def __post_init__(self):
         self.player_group.spawn_player()
         self.player_group.spawn_default_hearts()
+        self.text_group.menu = self.sprite_manager.create_menu(index="stats_display", position=[-420, 220])
 
     def draw_background(self):
         self.background.blit(IMAGE_SPRITES[(False, False, "edit_background")], (0, 0))
@@ -308,6 +309,18 @@ class GamePlaying(GameLoop):
             match item.text_type:
                 case "money":
                     item.set_text(f"Fragments: {self.player_group.player.money}")
+                case "damage":
+                    item.set_text(f"Damage: {self.player_group.player.damage}")
+                case "aspeed":
+                    item.set_text(f"Attack Speed: {self.player_group.player.cooldown}")
+                case "speed":
+                    item.set_text(f"Move Speed: {self.player_group.player.speed}")
+                case "range":
+                    item.set_text(f"Range: {self.player_group.player.range}")
+                case "sspeed":
+                    item.set_text(f"Shot Speed: {self.player_group.player.shot_speed}")
+                case "luck":
+                    item.set_text(f"Luck: {self.player_group.player.luck}")
                 case _:
                     pass
 
@@ -348,7 +361,9 @@ class GamePlaying(GameLoop):
         if keys[pg.K_p]:
             self.set_state(GameState.main_menu)
         if keys[pg.K_TAB]:
-             self.show_map = True
+            if not self.show_map:
+                self.text_group.toggle_stat_display(False)
+            self.show_map = True
         if event.type == pg.KEYUP:
             if event.key == pg.K_w:
                 self.player_group.movement_directions["top"] = False
@@ -359,6 +374,8 @@ class GamePlaying(GameLoop):
             if event.key == pg.K_d:
                 self.player_group.movement_directions["right"] = False
             if event.key == pg.K_TAB:
+                if self.show_map:
+                    self.text_group.toggle_stat_display(True)
                 self.show_map = False
         if event.type == pg.MOUSEBUTTONDOWN and event.button in (MOUSE_LEFT, MOUSE_RIGHT):
             if event.button == MOUSE_LEFT:
@@ -525,6 +542,6 @@ class GamePlaying(GameLoop):
 
     def curated_sprite_removal(self):
         for group in Layer:
-            if group in (Layer.player, Layer.health, Layer.weapon):
+            if group in (Layer.player, Layer.health, Layer.weapon, Layer.menu):
                 continue
             self.layers.remove_sprites_of_layer(group)
