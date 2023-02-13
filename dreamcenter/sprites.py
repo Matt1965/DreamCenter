@@ -289,6 +289,8 @@ class DirectedSprite(Sprite):
         self.final_position = target
         _v1 = Vector(target)
         _v2 = Vector(self.rect.center)
+        if _v1 - _v2 == 0:
+            return
         distance = int(round(math.sqrt((_v1[0]-_v2[0])**2 + (_v1[1]-_v2[1])**2)))
         vh = (_v1 - _v2).normalize() * self.speed
         self.path = zip(
@@ -333,6 +335,7 @@ class Text(DirectedSprite):
             font=FONT_NAME,
             action=None,
             path=None,
+            old_text="",
             **kwargs
     ):
         self.color = color
@@ -342,6 +345,7 @@ class Text(DirectedSprite):
         self.action = action
         self.rect = pg.Rect(0, 0, 0, 0)
         self.set_text(text)
+        self.old_text = old_text
         super().__init__(path=path, image=self.image, rect=self.rect, **kwargs)
 
     def rotate_cache_key(self):
@@ -357,8 +361,14 @@ class Text(DirectedSprite):
         )
 
     def set_text(self, text):
+        try:
+            if self.old_text == text:
+                return
+        except AttributeError:
+            pass
         self.text = text
         self.render_text()
+        self.old_text = self.text
 
     def render_text(self):
         pg_font = pg.font.Font(self.font, self.size)

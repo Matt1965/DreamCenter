@@ -32,7 +32,6 @@ class TextGroup:
     def toggle_stat_display(self, toggle=bool):
         for text in self.text_sprites:
             if text.text_type in ("damage", "aspeed", "speed", "range", "sspeed", "luck"):
-                print(text)
                 if toggle:
                     text.position[0] -= 500
                     self.menu.position = [-500, 220]
@@ -40,4 +39,4 @@ class TextGroup:
                     text.position[0] += 500
                     self.menu.position = [80, 220]
                 self.menu.move(self.menu.position, False)
-            text.move(text.position)
+
