@@ -26,6 +26,7 @@ from dreamcenter.constants import (
     LEVEL_CONNECTIONS,
     ALLOWED_BUFFS,
     DEBRIS,
+    ENEMY_STATS,
 )
 from dreamcenter.helpers import (
     create_surface,
@@ -172,7 +173,8 @@ class GamePlaying(GameLoop):
         if direction != "start":
             self.map_manager.map_grid[previous_position[0]][previous_position[1]]["saved_state"] = save_level(
                 self.level,
-                self.layers.get_sprites_from_layer(Layer.shrub.value),
+                self.layers.get_sprites_from_layer(Layer.shrub.value) +
+                self.layers.get_sprites_from_layer(Layer.debris.value),
                 self.layers.get_sprites_from_layer(Layer.enemy.value),
                 self.layers.get_sprites_from_layer(Layer.trap.value),
                 self.layers.get_sprites_from_layer(Layer.buff.value),
@@ -397,6 +399,7 @@ class GamePlaying(GameLoop):
         self.collision_player_buff()
         self.collision_projectile_debris()
         self.collision_player_debris()
+        self.collision_enemy_door()
 
     def collision_wall_projectile(self):
         walls = self.layers.get_sprites_from_layer(Layer.wall)
@@ -429,6 +432,17 @@ class GamePlaying(GameLoop):
                         enemy.health -= projectile.damage
                     if enemy.animation_state != AnimationState.dying:
                         projectile.animation_state = AnimationState.exploding
+                    if enemy.health <= 0:
+                        self.layers.change_layer(enemy, Layer.shrub)
+
+    def collision_enemy_door(self):
+        enemies = self.layers.get_sprites_from_layer(Layer.enemy)
+        doors = self.layers.get_sprites_from_layer(Layer.door)
+        for enemies, doors in collide_mask(enemies, doors):
+            for enemy in [enemies]:
+                enemy.path = None
+                enemy.move(enemy.previous_position)
+                enemy.movement_cooldown_remaining = 0
 
     def collision_enemy_wall(self):
         enemies = self.layers.get_sprites_from_layer(Layer.enemy)

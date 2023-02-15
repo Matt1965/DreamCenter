@@ -1,5 +1,8 @@
 import pygame as pg
+from pygame import Vector2 as Vector
 import tkinter
+import random
+import math
 from tkinter import filedialog
 from contextlib import contextmanager
 from math import atan2, degrees, pi
@@ -178,3 +181,8 @@ def save_dialog(title="Save file...", filetypes=(("Tower Defense Levels", "*.jso
     finally:
         if f is not None:
             f.close()
+
+
+def random_normalized_vector() -> Vector:
+    angle = math.radians(random.randint(0, 360))
+    return Vector(math.cos(angle), math.sin(angle))

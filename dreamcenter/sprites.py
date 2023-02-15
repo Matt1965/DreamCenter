@@ -6,7 +6,7 @@ from pygame import Vector2 as Vector
 from dataclasses import dataclass, field
 from typing import Generator, Optional, Dict
 from itertools import cycle, repeat, count, accumulate
-from dreamcenter.helpers import extend, angle_to
+from dreamcenter.helpers import extend, angle_to, random_normalized_vector
 from dreamcenter.constants import (
     IMAGE_SPRITES,
     TILE_HEIGHT,
@@ -201,8 +201,12 @@ class Sprite(pg.sprite.Sprite):
                 self.set_sprite_index(next_frame_index)
         except StopIteration:
             if AnimationState.state_kills_sprite(self.animation_state):
-                if self.index.split("_")[0] in DEBRIS:
-                    self.index = DEBRIS[self.index.split("_")[0]]["replacement"]
+                index = self.index.split("_")[0]
+                if index in DEBRIS:
+                    self.index = DEBRIS[index]["replacement"]
+                    self.animation_state = AnimationState.stopped
+                elif index in ALLOWED_ENEMY:
+                    self.frames = None
                     self.animation_state = AnimationState.stopped
                 else:
                     self.kill()
@@ -215,7 +219,6 @@ class Sprite(pg.sprite.Sprite):
                         ),
                     }
                 )
-
 
     def play(self):
         if self.sounds is not None and pg.mixer and self.channel is not None:
@@ -471,25 +474,25 @@ class Buff(DirectedSprite):
                 pass
 
     def action_nova(self):
-        self.target.damage += 1
-        self.target.cooldown += 1
+        self.target.damage += 5
+        self.target.cooldown += .5
 
     def action_accumen(self):
-        if self.target.cooldown >= 0:
+        if self.target.cooldown > 0:
             self.target.cooldown -= 1
         self.target.range -= 1
 
     def action_intuitus(self):
-        self.target.range += 1
-        self.target.speed -= 1
+        self.target.range += 5
+        self.target.speed -= .1
 
     def action_pax(self):
-        self.target.speed += 1
+        self.target.speed += .2
         self.target.health -= 1
 
     def action_corpus(self):
-        self.target.health += 1
-        self.target.damage -= 1
+        self.target.health += 2
+        self.target.damage -= 3
 
     def update(self):
         super().update()
@@ -554,11 +557,12 @@ class Player(Sprite):
         cooldown_remaining=0,
         position=[800, 500],
         speed=4,
-        range=100,
+        range=20,
         state=SpriteState.unknown,
         invulnerable_remaining=0,
         invulnerable_cooldown=40,
-        shot_speed=5,
+        shot_speed=15,
+        accuracy=30,
         luck=0,
         money=0,
         **kwargs
@@ -576,6 +580,7 @@ class Player(Sprite):
         self.invulnerable_remaining = invulnerable_remaining
         self.invulnerable_cooldown = invulnerable_cooldown
         self.shot_speed = shot_speed
+        self.accuracy = accuracy
         self.luck = luck
         self.money = money
 
@@ -601,13 +606,14 @@ class Player(Sprite):
             return True
         return False
 
+
 class Weapon(Sprite):
     _layer = Layer.weapon
 
     def __init__(
         self,
         offset=(31, 2),
-        position=[805, 510],
+        position=[805, 502],
         angle=0,
         state=SpriteState.unknown,
         original_frames = None,
@@ -628,6 +634,7 @@ class Weapon(Sprite):
             self.animate()
         except StopIteration:
             self.state = SpriteState.stopped
+
 
 class Background(Sprite):
 
@@ -671,6 +678,7 @@ class Health(Sprite):
     def update(self):
         pass
 
+
 class Debris(DirectedSprite):
     _layer = Layer.debris
 
@@ -682,11 +690,13 @@ class Debris(DirectedSprite):
         super().__init__(**kwargs)
         self.replacement = replacement
 
+
 class Menu(Sprite):
     _layer = Layer.menu
 
     def update(self):
         pass
+
 
 @dataclass
 class SpriteManager:
@@ -870,7 +880,7 @@ class SpriteManager:
             frames=create_animation_roll(
                 {
                     AnimationState.dying: extend(
-                        ENEMY_STATS[base_index]["anim_dying"], 12
+                        ENEMY_STATS[base_index]["anim_dying"], 8
                     ),
                     AnimationState.walking: cycle(extend(
                         ENEMY_STATS[base_index]["anim_walk"], 7
@@ -904,20 +914,20 @@ class SpriteManager:
         shrub.move(position)
         return shrub
 
-    def create_projectile(self, source, target, speed=5, max_distance=200, damage=5):
+    def create_projectile(self, source, target, accuracy=1, speed=5, max_distance=200, damage=5):
         """
         Factory that creates a projectile sprite starting at `source`
         and moves toward `target` at `speed` before disappearing if it
         reaches `max_distance`.
         """
-        v1 = Vector(target)
+        v1 = Vector(target) + random_normalized_vector() * accuracy
         v2 = Vector(source)
         vh = (v1 - v2).normalize() * speed
         path = zip(
             accumulate(repeat(vh, max_distance), func=operator.add, initial=v2),
             count(random.randint(0, 180)),
         )
-        for _ in range(3):
+        for _ in range(2):
             next(path)
         projectile = Projectile.create_from_sprite(
             position=source,

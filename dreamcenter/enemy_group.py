@@ -28,7 +28,7 @@ class EnemyGroup:
     def handle_movement(self, enemy):
         if enemy.movement in (MovementType.wander, MovementType.wander_chase):
             if enemy.movement_cooldown_remaining == 0:
-                enemy.random_movement(enemy.speed * 10)
+                enemy.random_movement(enemy.speed * 30)
                 if enemy.animation_state is not AnimationState.walking:
                     enemy.animation_state = AnimationState.walking
                 enemy.movement_cooldown_remaining = enemy.movement_cooldown

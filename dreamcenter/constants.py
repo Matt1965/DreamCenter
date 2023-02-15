@@ -82,15 +82,17 @@ SPRITES = {
     "chair": "chair.png",
     "chair_remains": "chair_remains.png",
     "stats_display": "stats_display.png",
+    "skeleton_dead": "skeleton_dead.png",
+    "spider_dead": "spider_dead.png",
 }
 
 # Animation dicts
 ANIMATIONS = {
     "projectile_explode": ["projectile_{:003}".format(frame) for frame in range(1, 3 + 1)],
-    "money_stopped": ["Money_{:003}".format(frame) for frame in range(1, 4 + 1)],
-    "skeleton_walk": ["Skeleton_Walk_{:003}".format(frame) for frame in range(1, 3 + 1)],
-    "skeleton_death": ["Skeleton_Death_{:003}".format(frame) for frame in range(1, 3 + 1)],
-    "skeleton_stopped": ["Skeleton_Stopped_{:003}".format(frame) for frame in range(1, 3 + 1)],
+    "money_stopped": ["money_{:003}".format(frame) for frame in range(1, 4 + 1)],
+    "skeleton_walk": ["skeleton_walk_{:003}".format(frame) for frame in range(1, 3 + 1)],
+    "skeleton_death": ["skeleton_death_{:003}".format(frame) for frame in range(1, 4 + 1)],
+    "skeleton_stopped": ["skeleton_stopped_{:003}".format(frame) for frame in range(1, 3 + 1)],
     "spider_walk": ["spider_walk_{:003}".format(frame) for frame in range(1, 2 + 1)],
     "spider_death": ["spider_death_{:003}".format(frame) for frame in range(1, 3 + 1)],
     "spider_stopped": ["spider_stopped_{:003}".format(frame) for frame in range(1, 3 + 1)],
@@ -262,7 +264,7 @@ ENEMY_STATS = {
         "value": 2,
         "health": 10,
         "aggro_distance": 300,
-        "speed": 3.5,
+        "speed": 4,
         "collision_damage": 1,
         "anim_dying": ANIMATIONS["spider_death"],
         "anim_walk": ANIMATIONS["spider_walk"],

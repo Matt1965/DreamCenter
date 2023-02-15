@@ -55,7 +55,9 @@ class PlayerGroup:
                 (self.player.position[0], self.player.position[1] + 17),
                 pg.mouse.get_pos(),
                 damage=self.player.damage,
-                max_distance=self.player.range
+                max_distance=self.player.range,
+                speed=self.player.shot_speed,
+                accuracy=self.player.accuracy,
             )
             self.player.cooldown_remaining = self.player.cooldown
             self.weapon.animation_state = AnimationState.firing
