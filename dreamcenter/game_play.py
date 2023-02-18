@@ -318,7 +318,7 @@ class GamePlaying(GameLoop):
                 case "speed":
                     item.set_text(f"Move Speed: {self.player_group.player.speed}")
                 case "range":
-                    item.set_text(f"Range: {self.player_group.player.range}")
+                    item.set_text(f"Range: {self.player_group.player.attack_range}")
                 case "sspeed":
                     item.set_text(f"Shot Speed: {self.player_group.player.shot_speed}")
                 case "luck":
@@ -466,7 +466,7 @@ class GamePlaying(GameLoop):
                 if enemy.movement in (MovementType.wander_chase, MovementType.wander):
                     enemy.path = None
                     enemy.move(enemy.previous_position)
-                    enemy.movement_cooldown_remaining = 0
+                    enemy.movement_cooldown_remaining = enemy.movement_cooldown - enemy.movement_cooldown_remaining
 
     def collision_player_enemy(self):
         enemies = self.layers.get_sprites_from_layer(Layer.enemy)
@@ -484,6 +484,8 @@ class GamePlaying(GameLoop):
         enemies = self.layers.get_sprites_from_layer(Layer.enemy)
         enemies_arranged = self.enemy_group.arrange_by_distance(enemies)
         for enemy in enemies_arranged:
+            if enemy.currently_wandering:
+                continue
             for enemy_collided in pg.sprite.spritecollide(enemy, enemies, False, collided=pg.sprite.collide_mask):
                 if enemy is not enemy_collided:
                     enemy_collided.waiting = True

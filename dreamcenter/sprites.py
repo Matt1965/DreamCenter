@@ -516,6 +516,7 @@ class Enemy(DirectedSprite):
         movement_cooldown=0,
         movement_cooldown_remaining=0,
         currently_pathfinding=False,
+        currently_wandering=False,
         **kwargs
     ):
         # Tracks the offset, if any, if the image is flipped
@@ -531,6 +532,7 @@ class Enemy(DirectedSprite):
         self.movement_cooldown = movement_cooldown
         self.movement_cooldown_remaining = movement_cooldown_remaining
         self.currently_pathfinding = currently_pathfinding
+        self.currently_wandering = currently_wandering
         super().__init__(**kwargs)
 
     def update(self):
@@ -557,11 +559,11 @@ class Player(Sprite):
         cooldown_remaining=0,
         position=[800, 500],
         speed=4,
-        range=20,
+        attack_range=20,
         state=SpriteState.unknown,
         invulnerable_remaining=0,
         invulnerable_cooldown=40,
-        shot_speed=15,
+        shot_speed=12,
         accuracy=30,
         luck=0,
         money=0,
@@ -575,7 +577,7 @@ class Player(Sprite):
         self.cooldown = cooldown
         self.position = position
         self.speed = speed
-        self.range = range
+        self.attack_range = attack_range
         self.cooldown_remaining = cooldown_remaining
         self.invulnerable_remaining = invulnerable_remaining
         self.invulnerable_cooldown = invulnerable_cooldown
