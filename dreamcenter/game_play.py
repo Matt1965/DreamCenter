@@ -26,18 +26,19 @@ from dreamcenter.constants import (
     LEVEL_CONNECTIONS,
     ALLOWED_BUFFS,
     DEBRIS,
-    ENEMY_STATS,
 )
 from dreamcenter.helpers import (
     create_surface,
     tile_positions,
     create_tile_map,
     collide_mask,
+    range_check,
 )
 from dreamcenter.enumeration import (
     Layer,
     AnimationState,
     MovementType,
+    SpriteState,
 )
 
 
@@ -338,6 +339,7 @@ class GamePlaying(GameLoop):
             self.handle_collision()
             if loop_counter % 10 == 0:
                 self.enemy_group.update()
+                self.item_chase()
             self.player_group.update()
             self.draw()
             text_layer.draw(self.screen)
@@ -432,6 +434,7 @@ class GamePlaying(GameLoop):
                         enemy.health -= projectile.damage
                     if enemy.animation_state != AnimationState.dying:
                         projectile.animation_state = AnimationState.exploding
+                        enemy.index = enemy.damaged_image
                     if enemy.health <= 0:
                         self.layers.change_layer(enemy, Layer.shrub)
 
@@ -441,7 +444,7 @@ class GamePlaying(GameLoop):
         for enemies, doors in collide_mask(enemies, doors):
             for enemy in [enemies]:
                 enemy.path = None
-                enemy.move(enemy.previous_position)
+                enemy.move(enemy.position_history.pop(-1))
                 enemy.movement_cooldown_remaining = 0
 
     def collision_enemy_wall(self):
@@ -451,7 +454,7 @@ class GamePlaying(GameLoop):
             for enemy in [enemies]:
                 if enemy.path is None:
                     continue
-                if enemy.currently_pathfinding:
+                if enemy.state == SpriteState.pathfinding:
                     continue
                 if enemy.movement in (MovementType.chase, MovementType.ranged_chase):
                     enemy.path = self.enemy_group.find_pathfinding_path(
@@ -461,11 +464,11 @@ class GamePlaying(GameLoop):
                         enemy.speed,
                     )
                     enemy.animation_state = AnimationState.walking
-                    enemy.currently_pathfinding = True
+                    enemy.state = SpriteState.pathfinding
                     enemy.final_position = self.player_group.player.rect.center
                 if enemy.movement in (MovementType.wander_chase, MovementType.wander):
                     enemy.path = None
-                    enemy.move(enemy.previous_position)
+                    enemy.move(enemy.position_history.pop(-1))
                     enemy.movement_cooldown_remaining = enemy.movement_cooldown - enemy.movement_cooldown_remaining
 
     def collision_player_enemy(self):
@@ -484,7 +487,7 @@ class GamePlaying(GameLoop):
         enemies = self.layers.get_sprites_from_layer(Layer.enemy)
         enemies_arranged = self.enemy_group.arrange_by_distance(enemies)
         for enemy in enemies_arranged:
-            if enemy.currently_wandering:
+            if enemy.state == SpriteState.wandering:
                 continue
             for enemy_collided in pg.sprite.spritecollide(enemy, enemies, False, collided=pg.sprite.collide_mask):
                 if enemy is not enemy_collided:
@@ -513,13 +516,13 @@ class GamePlaying(GameLoop):
         items = self.layers.get_sprites_from_layer(Layer.item)
         for item in items:
             for item_collided in pg.sprite.spritecollide(item, items, False, collided=pg.sprite.collide_circle_ratio(.4)):
-                if item is not item_collided:
+                if item is not item_collided and item.state == SpriteState.stopped:
                     item_collided.random_movement(15)
 
     def collision_player_item(self):
         items = self.layers.get_sprites_from_layer(Layer.item)
         player = self.layers.get_sprites_from_layer(Layer.player)
-        for player, items in collide_mask(player, items, pg.sprite.collide_circle_ratio(2)):
+        for player, items in collide_mask(player, items, pg.sprite.collide_circle_ratio(.5)):
             for item in items:
                 item.action()
                 item.kill()
@@ -555,6 +558,13 @@ class GamePlaying(GameLoop):
     def game_over_check(self):
         if self.player_group.player.health <= 0:
             self.set_state(GameState.game_over)
+
+    def item_chase(self):
+        items = self.layers.get_sprites_from_layer(Layer.item)
+        player = self.layers.get_sprites_from_layer(Layer.player)
+        for item in items:
+            if range_check(item.rect.center, player[0].rect.center, 250):
+                item.direct_movement(player[0].rect.center)
 
     def curated_sprite_removal(self):
         for group in Layer:

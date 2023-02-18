@@ -33,7 +33,6 @@ class EnemyGroup:
         if enemy.movement in (MovementType.wander, MovementType.wander_chase):
             if enemy.movement_cooldown_remaining == 0:
                 enemy.random_movement(enemy.speed * 30)
-                enemy.currently_wandering = True
                 if enemy.animation_state is not AnimationState.walking:
                     enemy.animation_state = AnimationState.walking
                 enemy.movement_cooldown_remaining = enemy.movement_cooldown
@@ -41,8 +40,6 @@ class EnemyGroup:
         if enemy.movement in (MovementType.wander_chase, MovementType.chase, MovementType.ranged_chase):
             if self.in_sight(enemy, self.player):
                 enemy.direct_movement(self.player.rect.center)
-                enemy.currently_pathfinding = False
-                enemy.currently_wandering = False
                 if enemy.animation_state is not AnimationState.walking:
                     enemy.animation_state = AnimationState.walking
 

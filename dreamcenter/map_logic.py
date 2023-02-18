@@ -5,7 +5,7 @@ from dreamcenter.constants import LEVEL_CONNECTIONS, MAP_GRID_UPPER_MAX
 @dataclass
 class Map:
     end_points: list = field(default_factory=list)
-    seed_amt: int = field(default=12)
+    seed_amt: int = field(default=32)
     map_grid: list[list[dict]] = field(default_factory=list)
 
     def __post_init__(self):

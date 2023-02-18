@@ -33,6 +33,8 @@ class SpriteState(enum.Enum):
     unknown = "unknown"
     moving = "moving"
     stopped = "stopped"
+    pathfinding = "pathfinding"
+    wandering = "wandering"
 
 
 class MovementType(enum.Enum):

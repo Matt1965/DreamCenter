@@ -186,3 +186,16 @@ def save_dialog(title="Save file...", filetypes=(("Tower Defense Levels", "*.jso
 def random_normalized_vector() -> Vector:
     angle = math.radians(random.randint(0, 360))
     return Vector(math.cos(angle), math.sin(angle))
+
+
+def range_check(origin, target, distance):
+    """
+    Checks the range between 2 points
+    Does not consider obstacles
+    """
+    line_of_sight = get_line(origin, target)
+
+    if Vector(line_of_sight[0]).distance_to(line_of_sight[-1]) > distance:
+        return False
+
+    return True

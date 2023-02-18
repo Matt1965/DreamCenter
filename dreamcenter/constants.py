@@ -84,6 +84,8 @@ SPRITES = {
     "stats_display": "stats_display.png",
     "skeleton_dead": "skeleton_dead.png",
     "spider_dead": "spider_dead.png",
+    "skeleton_damaged": "skeleton_damaged.png",
+    "spider_damaged": "spider_damaged.png",
 }
 
 # Animation dicts
@@ -259,6 +261,7 @@ ENEMY_STATS = {
         "anim_stop": ANIMATIONS["skeleton_stopped"],
         "movement": MovementType.chase,
         "movement_cooldown": 0,
+        "damaged_image": "skeleton_damaged",
     },
     "spider": {
         "value": 2,
@@ -271,6 +274,7 @@ ENEMY_STATS = {
         "anim_stop": ANIMATIONS["spider_stopped"],
         "movement": MovementType.wander_chase,
         "movement_cooldown": 70,
+        "damaged_image": "spider_damaged",
     },
 }
 

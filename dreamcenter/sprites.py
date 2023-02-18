@@ -20,7 +20,6 @@ from dreamcenter.constants import (
     CACHE,
     ENEMY_STATS,
     ITEM_STATS,
-    ALLOWED_BUFFS,
     ALLOWED_SHRUB,
     DEBRIS,
 )
@@ -245,7 +244,7 @@ class DirectedSprite(Sprite):
             path=None,
             state=SpriteState.unknown,
             waiting=False,
-            previous_position=[0, 0],
+            position_history=None,
             speed=3,
             **kwargs
     ):
@@ -254,20 +253,22 @@ class DirectedSprite(Sprite):
         self.path = path
         self.speed = speed
         self.waiting = waiting
-        self.previous_position = previous_position
+        if position_history is None:
+            self.position_history = [[0, 0]]
+        else:
+            self.position_history = position_history
 
     def update(self):
         try:
             self.flip_check()
             self.animate()
-            if self.path is not None:
-                self.state = SpriteState.moving
-                if not self.waiting:
-                    self.previous_position = self.position
-                    position, angle = next(self.path)
-                    self.position = position
-                    self.move(position)
-                    self.rotate(angle + next(self.angle))
+            if self.path and not self.waiting:
+                self.position_history.append(self.position)
+                del self.position_history[:-40]
+                position, angle = next(self.path)
+                self.position = position
+                self.move(position)
+                self.rotate(angle + next(self.angle))
             self.play()
             self.waiting = False
         except StopIteration:
@@ -300,6 +301,7 @@ class DirectedSprite(Sprite):
             accumulate(repeat(vh, int(distance/2)), func=operator.add, initial=_v2),
             repeat(0, int(distance/2)),
         )
+        self.state = SpriteState.moving
 
     def random_movement(self, interval):
         if self.path:
@@ -318,6 +320,7 @@ class DirectedSprite(Sprite):
             accumulate(repeat(vh, int(distance/2)), func=operator.add, initial=_v2),
             repeat(0, int(distance/2)),
         )
+        self.state = SpriteState.wandering
 
 
 class Text(DirectedSprite):
@@ -515,8 +518,7 @@ class Enemy(DirectedSprite):
         movement=MovementType.chase,
         movement_cooldown=0,
         movement_cooldown_remaining=0,
-        currently_pathfinding=False,
-        currently_wandering=False,
+        damaged_image=None,
         **kwargs
     ):
         # Tracks the offset, if any, if the image is flipped
@@ -531,8 +533,7 @@ class Enemy(DirectedSprite):
         self.movement = movement
         self.movement_cooldown = movement_cooldown
         self.movement_cooldown_remaining = movement_cooldown_remaining
-        self.currently_pathfinding = currently_pathfinding
-        self.currently_wandering = currently_wandering
+        self.damaged_image = damaged_image
         super().__init__(**kwargs)
 
     def update(self):
@@ -543,7 +544,7 @@ class Enemy(DirectedSprite):
             self.movement_cooldown_remaining -= 1
         if not self.path and self.animation_state != AnimationState.dying:
             self.animation_state = AnimationState.stopped
-            self.currently_pathfinding = False
+            self.state = SpriteState.stopped
 
 
 class Player(Sprite):
@@ -564,6 +565,7 @@ class Player(Sprite):
         invulnerable_remaining=0,
         invulnerable_cooldown=40,
         shot_speed=12,
+        knockback=5,
         accuracy=30,
         luck=0,
         money=0,
@@ -582,6 +584,7 @@ class Player(Sprite):
         self.invulnerable_remaining = invulnerable_remaining
         self.invulnerable_cooldown = invulnerable_cooldown
         self.shot_speed = shot_speed
+        self.knockback = knockback
         self.accuracy = accuracy
         self.luck = luck
         self.money = money
@@ -879,10 +882,11 @@ class SpriteManager:
             aggro_distance=ENEMY_STATS[base_index]["aggro_distance"],
             movement=ENEMY_STATS[base_index]["movement"],
             movement_cooldown=ENEMY_STATS[base_index]["movement_cooldown"],
+            damaged_image=ENEMY_STATS[base_index]["damaged_image"],
             frames=create_animation_roll(
                 {
                     AnimationState.dying: extend(
-                        ENEMY_STATS[base_index]["anim_dying"], 8
+                        ENEMY_STATS[base_index]["anim_dying"], 5
                     ),
                     AnimationState.walking: cycle(extend(
                         ENEMY_STATS[base_index]["anim_walk"], 7
@@ -935,6 +939,7 @@ class SpriteManager:
             position=source,
             groups=[self.layers],
             orientation=0,
+            state=SpriteState.moving,
             index="projectile",
             damage=damage,
             frames=create_animation_roll(
