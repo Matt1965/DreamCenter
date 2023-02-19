@@ -293,7 +293,7 @@ class DirectedSprite(Sprite):
         self.final_position = target
         _v1 = Vector(target)
         _v2 = Vector(self.rect.center)
-        if _v1 - _v2 == 0:
+        if (_v1 - _v2).magnitude() < 1:
             return
         distance = int(round(math.sqrt((_v1[0]-_v2[0])**2 + (_v1[1]-_v2[1])**2)))
         vh = (_v1 - _v2).normalize() * self.speed
@@ -394,8 +394,9 @@ class Projectile(DirectedSprite):
 
     _layer = Layer.projectile
 
-    def __init__(self, damage=5, **kwargs):
+    def __init__(self, damage=5, knockback=5, **kwargs):
         self.damage = damage
+        self.knockback = knockback
         super().__init__(**kwargs)
 
     def update(self):
@@ -565,7 +566,7 @@ class Player(Sprite):
         invulnerable_remaining=0,
         invulnerable_cooldown=40,
         shot_speed=12,
-        knockback=5,
+        knockback=10,
         accuracy=30,
         luck=0,
         money=0,
@@ -920,7 +921,16 @@ class SpriteManager:
         shrub.move(position)
         return shrub
 
-    def create_projectile(self, source, target, accuracy=1, speed=5, max_distance=200, damage=5):
+    def create_projectile(
+            self,
+            source,
+            target,
+            accuracy=1,
+            speed=5,
+            max_distance=200,
+            damage=5,
+            knockback=5,
+    ):
         """
         Factory that creates a projectile sprite starting at `source`
         and moves toward `target` at `speed` before disappearing if it
@@ -942,6 +952,7 @@ class SpriteManager:
             state=SpriteState.moving,
             index="projectile",
             damage=damage,
+            knockback=knockback,
             frames=create_animation_roll(
                 {
                     AnimationState.exploding: extend(

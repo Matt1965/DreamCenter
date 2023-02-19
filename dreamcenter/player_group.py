@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 from dreamcenter.sprites import SpriteManager
 from pygame import Vector2 as Vector
-from dreamcenter.constants import TILE_WIDTH
+from dreamcenter.constants import TILE_WIDTH, IMAGE_SPRITES
 from dreamcenter.enumeration import AnimationState
+from dreamcenter.special_effects import SpecialEffects
 from dreamcenter.helpers import angle_to
 import pygame as pg
 
@@ -13,6 +14,7 @@ class PlayerGroup:
     Used to manage actions related to the player and player sprite
     """
     sprite_manager: SpriteManager
+    special_effects: SpecialEffects
     player = None
     weapon = None
     empty_hearts = []
@@ -58,6 +60,7 @@ class PlayerGroup:
                 max_distance=self.player.attack_range,
                 speed=self.player.shot_speed,
                 accuracy=self.player.accuracy,
+                knockback=self.player.knockback,
             )
             self.player.cooldown_remaining = self.player.cooldown
             self.weapon.animation_state = AnimationState.firing
@@ -112,3 +115,8 @@ class PlayerGroup:
     def take_damage(self, damage):
         self.player.health -= damage
         self.half_hearts.pop().kill()
+        self.special_effects.draw_image(
+            duration=8,
+            top_left=self.player.rect.topleft,
+            image=IMAGE_SPRITES[(False, False, "edward_damaged")]
+        )

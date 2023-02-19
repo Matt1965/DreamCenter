@@ -15,6 +15,7 @@ from dreamcenter.game_state import GameState
 from dreamcenter.game import GameLoop
 from dreamcenter.game import save_level, create_background_tile_map
 from dreamcenter.sprites import SpriteManager
+from dreamcenter.special_effects import SpecialEffects
 from dreamcenter.constants import (
     DESIRED_FPS,
     IMAGE_SPRITES,
@@ -52,6 +53,7 @@ class GamePlaying(GameLoop):
     player_group: PlayerGroup
     enemy_group: EnemyGroup
     text_group: TextGroup
+    special_effects: SpecialEffects
     pathfinding_grid: []
     map_manager: Map
     show_map: bool
@@ -80,6 +82,7 @@ class GamePlaying(GameLoop):
                     layers=layers,
                     indices=None,
                 ),
+                special_effects=SpecialEffects()
             ),
             enemy_group=EnemyGroup(
                 sprite_manager=SpriteManager(
@@ -96,6 +99,7 @@ class GamePlaying(GameLoop):
                     indices=None,
                 )
             ),
+            special_effects=SpecialEffects()
         )
 
     def __post_init__(self):
@@ -280,6 +284,7 @@ class GamePlaying(GameLoop):
         self.screen.blit(self.background, (0, 0))
         self.layers.update()
         self.layers.draw(self.screen)
+        self.special_effects.draw()
         if self.show_map:
             self.display_map()
 
@@ -331,6 +336,7 @@ class GamePlaying(GameLoop):
         loop_counter = 0
         clock = pg.time.Clock()
         text_layer = pg.sprite.Group(*self.text_group.text_sprites)
+        self.special_effects.screen_sync(screen=self.screen)
 
         while self.state == GameState.game_playing:
             text_layer.update()
@@ -432,9 +438,13 @@ class GamePlaying(GameLoop):
                 for projectile in projectiles:
                     if projectile.animation_state == AnimationState.stopped:
                         enemy.health -= projectile.damage
+                        self.special_effects.draw_image(
+                            duration=4,
+                            top_left=enemy.rect.topleft,
+                            image=IMAGE_SPRITES[(enemy.flipped_x, enemy.flipped_y, enemy.damaged_image)]
+                        )
                     if enemy.animation_state != AnimationState.dying:
                         projectile.animation_state = AnimationState.exploding
-                        enemy.index = enemy.damaged_image
                     if enemy.health <= 0:
                         self.layers.change_layer(enemy, Layer.shrub)
 

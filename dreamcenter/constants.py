@@ -86,6 +86,9 @@ SPRITES = {
     "spider_dead": "spider_dead.png",
     "skeleton_damaged": "skeleton_damaged.png",
     "spider_damaged": "spider_damaged.png",
+    "edward_damaged": "edward_damaged.png",
+    "bg_incorner_mask": "bg_incorner_mask.png",
+    "bg_corner_mask": "bg_corner_mask.png",
 }
 
 # Animation dicts
