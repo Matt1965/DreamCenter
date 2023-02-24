@@ -24,9 +24,9 @@ MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT = 1, 2, 3
 # Dict of all game images
 # Animation images added separately
 SPRITES = {
-    "edwardo": "edwardo.png",
+    "edwardo": "Edwardo.png",
     "background": "background.png",
-    "logo": "logo.png",
+    "logo": "Logo.png",
     "edit_background": "edit_background.png",
     "play_background": "play_background.png",
     "blank": "blank.png",
@@ -55,7 +55,7 @@ SPRITES = {
     "map_border": "map_border.png",
     "map_display": "map_display.png",
     "map_you_are_here": "map_you_are_here.png",
-    "money": "money_000.png",
+    "money": "Money_000.png",
     "text": "blank.png",
     "buff_accumen": "buff_accumen.png",
     "buff_corpus": "buff_corpus.png",
@@ -82,22 +82,17 @@ SPRITES = {
     "chair": "chair.png",
     "chair_remains": "chair_remains.png",
     "stats_display": "stats_display.png",
-    "skeleton_dead": "skeleton_dead.png",
-    "spider_dead": "spider_dead.png",
-    "skeleton_damaged": "skeleton_damaged.png",
-    "spider_damaged": "spider_damaged.png",
-    "edward_damaged": "edward_damaged.png",
-    "bg_incorner_mask": "bg_incorner_mask.png",
-    "bg_corner_mask": "bg_corner_mask.png",
+    "bg_incorner_mask": "bg_mask.png",
+    "bg_corner_mask": "bg_mask.png",
 }
 
 # Animation dicts
 ANIMATIONS = {
     "projectile_explode": ["projectile_{:003}".format(frame) for frame in range(1, 3 + 1)],
-    "money_stopped": ["money_{:003}".format(frame) for frame in range(1, 4 + 1)],
-    "skeleton_walk": ["skeleton_walk_{:003}".format(frame) for frame in range(1, 3 + 1)],
-    "skeleton_death": ["skeleton_death_{:003}".format(frame) for frame in range(1, 4 + 1)],
-    "skeleton_stopped": ["skeleton_stopped_{:003}".format(frame) for frame in range(1, 3 + 1)],
+    "money_stopped": ["Money_{:003}".format(frame) for frame in range(1, 4 + 1)],
+    "skeleton_walk": ["Skeleton_Walk_{:003}".format(frame) for frame in range(1, 3 + 1)],
+    "skeleton_death": ["Skeleton_Death_{:003}".format(frame) for frame in range(1, 4)],
+    "skeleton_stopped": ["Skeleton_Stopped_{:003}".format(frame) for frame in range(1, 3 + 1)],
     "spider_walk": ["spider_walk_{:003}".format(frame) for frame in range(1, 2 + 1)],
     "spider_death": ["spider_death_{:003}".format(frame) for frame in range(1, 3 + 1)],
     "spider_stopped": ["spider_stopped_{:003}".format(frame) for frame in range(1, 3 + 1)],
@@ -264,7 +259,7 @@ ENEMY_STATS = {
         "anim_stop": ANIMATIONS["skeleton_stopped"],
         "movement": MovementType.chase,
         "movement_cooldown": 0,
-        "damaged_image": "skeleton_damaged",
+        "damaged_image": "",
     },
     "spider": {
         "value": 2,
@@ -277,7 +272,7 @@ ENEMY_STATS = {
         "anim_stop": ANIMATIONS["spider_stopped"],
         "movement": MovementType.wander_chase,
         "movement_cooldown": 70,
-        "damaged_image": "spider_damaged",
+        "damaged_image": "",
     },
 }
 

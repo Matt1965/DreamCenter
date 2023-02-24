@@ -118,5 +118,5 @@ class PlayerGroup:
         self.special_effects.draw_image(
             duration=8,
             top_left=self.player.rect.topleft,
-            image=IMAGE_SPRITES[(False, False, "edward_damaged")]
+            image=IMAGE_SPRITES[(False, False, "")]
         )
